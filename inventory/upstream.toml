@@ -1,0 +1,122 @@
+# Machine-readable upstream inventory — M0 deliverable 4.
+#
+# This is a COVERAGE INPUT, not a source of package truth. It records what
+# upstream projects exist, where their source and releases live, and what
+# this catalog has packaged so far. A recipe is derived from the upstream
+# project itself — its current source, release metadata, build instructions,
+# licence and runtime behaviour — never from a line in this file.
+#
+# `packaged` says what this repository actually ships today and is the honest
+# answer to "what is covered": `interface` means only the public interface
+# exists, `vendor` means a pinned vendor-binary realization exists, `source`
+# means a from-source realization exists. An entry may carry both.
+#
+# The `observed_pin` column records a version seen in a real consuming
+# project, so the catalog can tell "nobody uses this" from "this is pinned
+# somewhere and we have not covered it". The seed values come from Agent
+# Harbor's `scripts/windows-devenv/toolchain-versions.env` on 2026-09-16 —
+# the first consumer this catalog was built for, and the place these pins
+# are currently maintained by hand.
+
+schema = "reprobuild.llm-agent-catalog.inventory.v1"
+
+[[agent]]
+name = "claude-code"
+homepage = "https://claude.com/claude-code"
+provenance_class = "vendor-binary"
+source_available = false
+main_programs = ["claude"]
+release_channel = "gcs-release-prefix"
+observed_pin = "2.1.272"
+packaged = ["interface", "vendor"]
+packaged_version = "2.1.170"
+notes = """
+No corresponding source is published, so a source realization is not
+reachable. The vendor payload is fetch-on-user-behalf and must not be
+republished into a shared cache.
+"""
+
+[[agent]]
+name = "codex"
+homepage = "https://github.com/openai/codex"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["codex"]
+release_channel = "github-release"
+observed_pin = "0.154.0"
+packaged = ["interface"]
+
+[[agent]]
+name = "gemini-cli"
+homepage = "https://github.com/google-gemini/gemini-cli"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["gemini"]
+release_channel = "npm"
+observed_pin = "0.59.0"
+packaged = ["interface"]
+
+[[agent]]
+name = "qwen-code"
+homepage = "https://github.com/QwenLM/qwen-code"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["qwen"]
+release_channel = "npm"
+observed_pin = "0.23.4"
+packaged = ["interface"]
+
+[[agent]]
+name = "goose"
+homepage = "https://github.com/block/goose"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["goose", "goosed"]
+release_channel = "github-release"
+observed_pin = "1.50.1"
+packaged = ["interface"]
+
+[[agent]]
+name = "opencode"
+homepage = "https://github.com/sst/opencode"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["opencode"]
+release_channel = "github-release"
+observed_pin = "1.18.31"
+packaged = ["interface"]
+notes = """
+Licence and published build have diverged before. A realization must record
+the licence verified AT THE PINNED VERSION rather than inheriting an earlier
+judgement.
+"""
+
+# ---------------------------------------------------------------------------
+# Known upstreams with no interface in this catalog yet. Listed so coverage
+# reporting can distinguish "not packaged" from "not known about" — the
+# distinction M5 requires of the generated coverage report.
+# ---------------------------------------------------------------------------
+
+[[uncovered]]
+name = "copilot-cli"
+homepage = "https://github.com/github/copilot-cli"
+observed_pin = "1.0.83"
+reason = "no interface defined yet"
+
+[[uncovered]]
+name = "amp"
+homepage = "https://ampcode.com"
+observed_pin = "0.0.1782120930-g64087b"
+reason = "no interface defined yet; upstream version scheme is not semver"
+
+[[uncovered]]
+name = "claude-code-acp"
+homepage = "https://github.com/zed-industries/claude-code-acp"
+observed_pin = "0.16.2"
+reason = "ACP adapter category — M4, not the coding-agent CLI taxonomy"
+
+[[uncovered]]
+name = "codex-acp"
+homepage = "https://github.com/zed-industries/codex-acp"
+observed_pin = "0.14.0"
+reason = "ACP adapter category — M4, not the coding-agent CLI taxonomy"
