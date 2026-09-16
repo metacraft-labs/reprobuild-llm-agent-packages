@@ -16,7 +16,7 @@
 ##     is the specific authoring mistake that yields a package which
 ##     resolves everywhere and runs on one machine.
 
-import std/[os, sequtils, sets, unittest]
+import std/[os, sequtils, sets, strutils, unittest]
 
 import repro_interface_artifacts
 import repro_project_dsl
@@ -29,6 +29,9 @@ import "../packages/interfaces/opencode/repro" as opencodeInterface
 import "../packages/interfaces/qwen-code/repro" as qwenCodeInterface
 
 import "../packages/vendor/claude-code/repro" as claudeCodeVendor
+import "../packages/vendor/codex/repro" as codexVendor
+import "../packages/vendor/goose/repro" as gooseVendor
+import "../packages/vendor/opencode/repro" as opencodeVendor
 
 const PublishedInterfaces = [
   "claude-code", "codex", "gemini-cli", "goose", "opencode", "qwen-code"]
@@ -46,12 +49,17 @@ suite "LLM agent catalog":
       let target = packages.filterIt(it.packageName == name)[0]
       check target.executables.len >= 1
 
-  test "goose exports both of the programs its contract names":
+  test "goose declares only the program its release archive ships":
+    # Regression guard for a correction: an earlier draft of this interface
+    # also declared `goosed`, reasoning from Goose's architecture rather than
+    # from its artifacts. `goosed` ships in the Desktop application, not in
+    # the CLI release archive, so that member was unsatisfiable and every
+    # realization would have failed conformance for it.
     let packages = registeredPackages()
     let goosePkg = packages.filterIt(it.packageName == "goose")[0]
     let members = goosePkg.executables.mapIt(it.exportName).toHashSet()
     check "goose" in members
-    check "goosed" in members
+    check "goosed" notin members
 
   test "contributions pin the canonical fingerprint of their target":
     let packages = registeredPackages()
@@ -63,6 +71,18 @@ suite "LLM agent catalog":
       check targets.len == 1
       check contribution.targetInterfaceFingerprint ==
         canonicalPackageInterfaceFingerprint(targets[0], packages)
+
+  test "codex reconciles its triple-suffixed binary to the invoked name":
+    # Upstream ships `codex-<triple>.exe`; every consumer invokes `codex`. A
+    # realized prefix goes on PATH as a directory, so without an alias the
+    # plain name never resolves - which is why the environment this catalog
+    # replaces had to synthesise a codex.exe shim outside any store.
+    let codexSlices = registeredProvisioningContributions()
+      .filterIt(it.targetPackage == "codex")[0].tarballProvisioning
+    check codexSlices.len == 2
+    for slice in codexSlices:
+      check slice.executablePath.startsWith("codex-")
+      check slice.executableAlias == "codex.exe"
 
   test "the claude-code vendor realization covers six distinct platforms":
     let contributions = registeredProvisioningContributions().filterIt(

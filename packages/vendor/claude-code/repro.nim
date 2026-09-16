@@ -23,7 +23,7 @@
 ## The glibc build covers the Linux axis, matching how the rest of this
 ## catalog's Linux slices are pinned.
 ##
-## **Digests** are upstream's own, from the 2.1.170 manifest. Bumping the
+## **Digests** are upstream's own, from the 2.1.272 manifest. Bumping the
 ## version means re-reading that manifest; do not carry a digest forward.
 ##
 ## **Cache policy.** This realization is marked vendor-binary provenance and
@@ -35,7 +35,7 @@
 import repro_project_dsl
 
 const
-  ClaudeCodeVersion = "2.1.170"
+  ClaudeCodeVersion = "2.1.272"
   ClaudeCodeBase =
     "https://storage.googleapis.com/" &
     "claude-code-dist-86c565f3-f756-42ad-8dfa-d59b1c096819/" &
@@ -50,61 +50,61 @@ provisioningFor "claude-code":
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url = ClaudeCodeBase & "win32-x64/claude.exe",
-    sha256 = "193061508fe619abf534b2c9d48151f26971d1d5b8460ad75c0af4be3d3525fb",
+    sha256 = "cd8d8d33e549ba5973428bcf18310164227d68ca756925242c47d3b0d48bf4dc",
     archiveType = "raw",
     executablePath = "claude.exe",
     packageId = "claude-code@" & ClaudeCodeVersion,
     cpu = "x86_64",
     os = "windows",
     lockIdentity = "vendor-binary:claude-code@" & ClaudeCodeVersion &
-      ":windows-x86_64:sha256:193061508fe619abf534b2c9d48151f26971d1d5b8460ad75c0af4be3d3525fb"
+      ":windows-x86_64:sha256:cd8d8d33e549ba5973428bcf18310164227d68ca756925242c47d3b0d48bf4dc"
 
   tarball url = ClaudeCodeBase & "win32-arm64/claude.exe",
-    sha256 = "9abd330bcc191aecc877a8ee9da2b448852cfe3bda15e5e4608385ea1d9d1709",
+    sha256 = "e8fbdb138cb3b438929286f234663f98fe0a914d77d6c8589a51f3ecf8915462",
     archiveType = "raw",
     executablePath = "claude.exe",
     packageId = "claude-code@" & ClaudeCodeVersion,
     cpu = "aarch64",
     os = "windows",
     lockIdentity = "vendor-binary:claude-code@" & ClaudeCodeVersion &
-      ":windows-aarch64:sha256:9abd330bcc191aecc877a8ee9da2b448852cfe3bda15e5e4608385ea1d9d1709"
+      ":windows-aarch64:sha256:e8fbdb138cb3b438929286f234663f98fe0a914d77d6c8589a51f3ecf8915462"
 
   tarball url = ClaudeCodeBase & "linux-x64/claude",
-    sha256 = "849e007277a0442ab27570d3e3d6d43787507946590e8dd1947e5a39b7081f9e",
+    sha256 = "d81396a668eb76fbddb49a2a5841f1b5d7af96b4c1f6500ced92f2c988f5bcd4",
     archiveType = "raw",
     executablePath = "claude",
     packageId = "claude-code@" & ClaudeCodeVersion,
     cpu = "x86_64",
     os = "linux",
     lockIdentity = "vendor-binary:claude-code@" & ClaudeCodeVersion &
-      ":linux-x86_64:sha256:849e007277a0442ab27570d3e3d6d43787507946590e8dd1947e5a39b7081f9e"
+      ":linux-x86_64:sha256:d81396a668eb76fbddb49a2a5841f1b5d7af96b4c1f6500ced92f2c988f5bcd4"
 
   tarball url = ClaudeCodeBase & "linux-arm64/claude",
-    sha256 = "1bb9d032440a75532f7dd4cafbc687f220aaf16c63eba17e192dfbec2f04bd25",
+    sha256 = "214a90efdd16ee0ea81132ffecced588dba394d178cc494f285ba04b5288c8de",
     archiveType = "raw",
     executablePath = "claude",
     packageId = "claude-code@" & ClaudeCodeVersion,
     cpu = "aarch64",
     os = "linux",
     lockIdentity = "vendor-binary:claude-code@" & ClaudeCodeVersion &
-      ":linux-aarch64:sha256:1bb9d032440a75532f7dd4cafbc687f220aaf16c63eba17e192dfbec2f04bd25"
+      ":linux-aarch64:sha256:214a90efdd16ee0ea81132ffecced588dba394d178cc494f285ba04b5288c8de"
 
   tarball url = ClaudeCodeBase & "darwin-x64/claude",
-    sha256 = "914f23a70bbed5d9ae567e3e04b86206ed9971b371bc9baca3f79c8885bfddb4",
+    sha256 = "6377b8e95ecbf90fd6b91e543b3c23e1b23c9c968b2acb7ad460ce5573d3e41c",
     archiveType = "raw",
     executablePath = "claude",
     packageId = "claude-code@" & ClaudeCodeVersion,
     cpu = "x86_64",
     os = "macos",
     lockIdentity = "vendor-binary:claude-code@" & ClaudeCodeVersion &
-      ":macos-x86_64:sha256:914f23a70bbed5d9ae567e3e04b86206ed9971b371bc9baca3f79c8885bfddb4"
+      ":macos-x86_64:sha256:6377b8e95ecbf90fd6b91e543b3c23e1b23c9c968b2acb7ad460ce5573d3e41c"
 
   tarball url = ClaudeCodeBase & "darwin-arm64/claude",
-    sha256 = "e903646d8b7a31882a80ecd27569a27d8ac57b3708745f349709632c84117fdf",
+    sha256 = "195e24e8e1f9bf46f1eaee72d434a33e18f9f5796f29a6348a00d16c5f8aee75",
     archiveType = "raw",
     executablePath = "claude",
     packageId = "claude-code@" & ClaudeCodeVersion,
     cpu = "aarch64",
     os = "macos",
     lockIdentity = "vendor-binary:claude-code@" & ClaudeCodeVersion &
-      ":macos-aarch64:sha256:e903646d8b7a31882a80ecd27569a27d8ac57b3708745f349709632c84117fdf"
+      ":macos-aarch64:sha256:195e24e8e1f9bf46f1eaee72d434a33e18f9f5796f29a6348a00d16c5f8aee75"

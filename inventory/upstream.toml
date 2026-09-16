@@ -29,7 +29,7 @@ main_programs = ["claude"]
 release_channel = "gcs-release-prefix"
 observed_pin = "2.1.272"
 packaged = ["interface", "vendor"]
-packaged_version = "2.1.170"
+packaged_version = "2.1.272"
 notes = """
 No corresponding source is published, so a source realization is not
 reachable. The vendor payload is fetch-on-user-behalf and must not be
@@ -44,7 +44,8 @@ source_available = true
 main_programs = ["codex"]
 release_channel = "github-release"
 observed_pin = "0.154.0"
-packaged = ["interface"]
+packaged = ["interface", "vendor"]
+packaged_version = "0.154.0"
 
 [[agent]]
 name = "gemini-cli"
@@ -74,7 +75,8 @@ source_available = true
 main_programs = ["goose", "goosed"]
 release_channel = "github-release"
 observed_pin = "1.50.1"
-packaged = ["interface"]
+packaged = ["interface", "vendor"]
+packaged_version = "1.50.1"
 
 [[agent]]
 name = "opencode"
@@ -84,7 +86,8 @@ source_available = true
 main_programs = ["opencode"]
 release_channel = "github-release"
 observed_pin = "1.18.31"
-packaged = ["interface"]
+packaged = ["interface", "vendor"]
+packaged_version = "1.18.31"
 notes = """
 Licence and published build have diverged before. A realization must record
 the licence verified AT THE PINNED VERSION rather than inheriting an earlier
