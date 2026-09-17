@@ -68,6 +68,39 @@ observed_pin = "0.23.4"
 packaged = ["interface"]
 
 [[agent]]
+name = "copilot"
+homepage = "https://github.com/github/copilot-cli"
+provenance_class = "vendor-binary"
+source_available = false
+main_programs = ["copilot"]
+release_channel = "github-release"
+observed_pin = "1.0.83"
+packaged = ["interface", "vendor"]
+packaged_version = "1.0.83"
+notes = """
+The consuming project installs this from npm, so unlike the other agents
+here there was no independently harvested digest to cross-check the release
+archives against.
+"""
+
+[[agent]]
+name = "codex-acp"
+homepage = "https://github.com/zed-industries/codex-acp"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["codex-acp"]
+release_channel = "github-release"
+observed_pin = "0.14.0"
+packaged = ["interface", "vendor"]
+packaged_version = "0.14.0"
+notes = """
+ACP ADAPTER, not a coding-agent CLI: it speaks the Agent Client Protocol to
+an editor and drives Codex on the other side, so a consumer composes it WITH
+an agent rather than instead of one. The protocol members that category will
+declare are not modelled yet.
+"""
+
+[[agent]]
 name = "goose"
 homepage = "https://github.com/block/goose"
 provenance_class = "source-available"
@@ -101,12 +134,6 @@ judgement.
 # ---------------------------------------------------------------------------
 
 [[uncovered]]
-name = "copilot-cli"
-homepage = "https://github.com/github/copilot-cli"
-observed_pin = "1.0.83"
-reason = "no interface defined yet"
-
-[[uncovered]]
 name = "amp"
 homepage = "https://ampcode.com"
 observed_pin = "0.0.1782120930-g64087b"
@@ -123,3 +150,33 @@ name = "codex-acp"
 homepage = "https://github.com/zed-industries/codex-acp"
 observed_pin = "0.14.0"
 reason = "ACP adapter category — M4, not the coding-agent CLI taxonomy"
+
+[[uncovered]]
+name = "gemini-cli"
+homepage = "https://github.com/google-gemini/gemini-cli"
+observed_pin = "0.59.0"
+reason = """
+Interface defined; no realization. Upstream publishes no Windows release
+binary at the pinned version — only darwin archives — so the only
+distribution channel is npm, and an npm package needs its dependency
+closure. That is a provisioning channel this catalog does not have yet, not
+a missing recipe.
+"""
+
+[[uncovered]]
+name = "qwen-code"
+homepage = "https://github.com/QwenLM/qwen-code"
+observed_pin = "0.23.4"
+reason = "Interface defined; npm-only at the pinned version, same as gemini-cli."
+
+[[uncovered]]
+name = "claude-code-acp"
+homepage = "https://github.com/zed-industries/claude-code-acp"
+observed_pin = "0.16.2"
+reason = "npm-only; the release carries no binary assets."
+
+[[uncovered]]
+name = "amp"
+homepage = "https://ampcode.com"
+observed_pin = "0.0.1782120930-g64087b"
+reason = "npm-only; upstream version scheme is not semver."

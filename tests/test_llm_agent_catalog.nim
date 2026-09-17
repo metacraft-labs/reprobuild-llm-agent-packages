@@ -27,14 +27,19 @@ import "../packages/interfaces/gemini-cli/repro" as geminiCliInterface
 import "../packages/interfaces/goose/repro" as gooseInterface
 import "../packages/interfaces/opencode/repro" as opencodeInterface
 import "../packages/interfaces/qwen-code/repro" as qwenCodeInterface
+import "../packages/interfaces/copilot/repro" as copilotInterface
+import "../packages/interfaces/codex-acp/repro" as codexAcpInterface
 
 import "../packages/vendor/claude-code/repro" as claudeCodeVendor
 import "../packages/vendor/codex/repro" as codexVendor
 import "../packages/vendor/goose/repro" as gooseVendor
 import "../packages/vendor/opencode/repro" as opencodeVendor
+import "../packages/vendor/copilot/repro" as copilotVendor
+import "../packages/vendor/codex-acp/repro" as codexAcpVendor
 
 const PublishedInterfaces = [
-  "claude-code", "codex", "gemini-cli", "goose", "opencode", "qwen-code"]
+  "claude-code", "codex", "codex-acp", "copilot", "gemini-cli", "goose",
+  "opencode", "qwen-code"]
 
 suite "LLM agent catalog":
   test "each published interface is registered exactly once":
