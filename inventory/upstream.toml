@@ -56,6 +56,12 @@ main_programs = ["gemini"]
 release_channel = "npm"
 observed_pin = "0.59.0"
 packaged = ["interface"]
+realization_blocked = """
+Upstream publishes no release binary at the pinned version -- the release
+carries darwin archives only -- so the only distribution channel is npm, and
+an npm package needs its dependency closure resolved and pinned. That is a
+provisioning channel this catalog does not have yet, not a missing recipe.
+"""
 
 [[agent]]
 name = "qwen-code"
@@ -66,6 +72,9 @@ main_programs = ["qwen"]
 release_channel = "npm"
 observed_pin = "0.23.4"
 packaged = ["interface"]
+realization_blocked = """
+npm-only at the pinned version, for the same reason as gemini-cli.
+"""
 
 [[agent]]
 name = "copilot"
@@ -128,55 +137,38 @@ judgement.
 """
 
 # ---------------------------------------------------------------------------
-# Known upstreams with no interface in this catalog yet. Listed so coverage
-# reporting can distinguish "not packaged" from "not known about" — the
-# distinction M5 requires of the generated coverage report.
+# Known upstreams with NO interface in this catalog. That is the whole
+# meaning of this section, and it is why an agent with an interface but no
+# realization is NOT here -- it carries `realization_blocked` on its
+# `[[agent]]` entry instead. Listing it in both places is how a coverage
+# report starts contradicting itself: one section says packaged, the other
+# says uncovered, and whichever is read first wins.
+#
+# One row per upstream. `tests/test_llm_agent_catalog.nim` fails on a
+# duplicate, on a name that appears in both sections, and on a name here
+# that has an interface after all.
 # ---------------------------------------------------------------------------
 
 [[uncovered]]
 name = "amp"
 homepage = "https://ampcode.com"
 observed_pin = "0.0.1782120930-g64087b"
-reason = "no interface defined yet; upstream version scheme is not semver"
-
-[[uncovered]]
-name = "claude-code-acp"
-homepage = "https://github.com/zed-industries/claude-code-acp"
-observed_pin = "0.16.2"
-reason = "ACP adapter category — M4, not the coding-agent CLI taxonomy"
-
-[[uncovered]]
-name = "codex-acp"
-homepage = "https://github.com/zed-industries/codex-acp"
-observed_pin = "0.14.0"
-reason = "ACP adapter category — M4, not the coding-agent CLI taxonomy"
-
-[[uncovered]]
-name = "gemini-cli"
-homepage = "https://github.com/google-gemini/gemini-cli"
-observed_pin = "0.59.0"
 reason = """
-Interface defined; no realization. Upstream publishes no Windows release
-binary at the pinned version — only darwin archives — so the only
-distribution channel is npm, and an npm package needs its dependency
-closure. That is a provisioning channel this catalog does not have yet, not
-a missing recipe.
+npm-only: the distribution is an npm package with no release binaries. Its
+version scheme is also not semver, so the interface's version constraint
+grammar would need a decision before one could be written.
 """
 
 [[uncovered]]
-name = "qwen-code"
-homepage = "https://github.com/QwenLM/qwen-code"
-observed_pin = "0.23.4"
-reason = "Interface defined; npm-only at the pinned version, same as gemini-cli."
-
-[[uncovered]]
 name = "claude-code-acp"
 homepage = "https://github.com/zed-industries/claude-code-acp"
 observed_pin = "0.16.2"
-reason = "npm-only; the release carries no binary assets."
-
-[[uncovered]]
-name = "amp"
-homepage = "https://ampcode.com"
-observed_pin = "0.0.1782120930-g64087b"
-reason = "npm-only; upstream version scheme is not semver."
+reason = """
+npm-only: the release carries no binary assets. It is also an ACP ADAPTER
+rather than a coding-agent CLI -- it speaks the Agent Client Protocol to an
+editor and drives Claude Code on the other side -- so a consumer composes it
+WITH an agent rather than instead of one, and the protocol members that
+category needs are not modelled yet. `codex-acp` is the same category and
+DOES have an interface and a vendor realization, so the category is not the
+obstacle here; the npm-only distribution is.
+"""

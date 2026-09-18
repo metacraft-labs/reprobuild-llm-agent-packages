@@ -17,7 +17,7 @@ packages/interfaces/<name>/repro.nim   the public interface — what the package
 packages/source/<name>/repro.nim       built from upstream source
 packages/vendor/<name>/repro.nim       pinned vendor binaries, for agents that publish no source
 inventory/upstream.toml                machine-readable upstream inventory and coverage
-tools/                                 the published interface fingerprints
+tools/                                 interface fingerprints, coverage report
 tests/                                 catalog conformance
 ```
 
@@ -61,9 +61,17 @@ than applied to a contract it was never checked against.
 ## Contributor checks
 
 ```console
-just test          # interface registration, fingerprint pins, artifact round-trip
+just test          # interface registration, fingerprint pins, artifact round-trip,
+                   #   and that the inventory and the catalog agree
 just fingerprints  # the canonical pins external catalogs use
+just coverage      # what is shipped for each known upstream, and why a gap is one
 ```
+
+`just coverage` distinguishes the two kinds of gap, because they need
+different answers: an upstream with no interface here is a design decision
+nobody has taken, while an interface with no realization is a provisioning
+channel nobody has built. Today every one of the second kind is npm, so
+building that one channel would close four agents at once.
 
 Set `REPROBUILD_SRC` when the sibling `reprobuild` checkout is not at
 `../reprobuild`.

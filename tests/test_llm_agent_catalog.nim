@@ -37,6 +37,8 @@ import "../packages/vendor/opencode/repro" as opencodeVendor
 import "../packages/vendor/copilot/repro" as copilotVendor
 import "../packages/vendor/codex-acp/repro" as codexAcpVendor
 
+import ../tools/coverage_report as coverage
+
 const PublishedInterfaces = [
   "claude-code", "codex", "codex-acp", "copilot", "gemini-cli", "goose",
   "opencode", "qwen-code"]
@@ -113,3 +115,53 @@ suite "LLM agent catalog":
     let roundTrip = decodeProjectInterfaceArtifact(
       encodeProjectInterfaceArtifact(artifact))
     check roundTrip.projectInterface.provisioningContributions.len == expected
+
+suite "the upstream inventory and the catalog agree":
+  ## `inventory/upstream.toml` is what the coverage report is generated
+  ## from, and an inventory nobody checks drifts from the catalog it
+  ## describes and then reads as a status report while being a wish list.
+  ## It had drifted: `codex-acp` was listed as packaged AND as uncovered,
+  ## and `amp` and `claude-code-acp` each appeared twice with different
+  ## reasons.
+  let inv = coverage.loadInventoryFile()
+
+  test "the inventory makes no claim the catalog contradicts":
+    # THE GATE. Every disagreement `tools/coverage_report.nim` knows how to
+    # find, reported by name: a duplicate row, a name in both sections, a
+    # claimed interface with no registered package, a registered package
+    # the inventory does not mention, a realization with no version, an
+    # interface-only row with no reason.
+    let found = coverage.problems(inv, coverage.registeredPackageNames())
+    for problem in found:
+      checkpoint(problem)
+    check found.len == 0
+
+  test "every published interface is in the inventory, and vice versa":
+    # The two lists are maintained in different files by different edits,
+    # so they are exactly the kind of pair that comes apart silently.
+    var inventoried = initHashSet[string]()
+    for entry in inv.agent:
+      inventoried.incl(entry.name)
+    for name in PublishedInterfaces:
+      check name in inventoried
+    check inventoried.len == PublishedInterfaces.len
+
+  test "an interface with no realization says why, and it is not silence":
+    # The distinction the report exists for: "nobody built the recipe" and
+    # "upstream's only channel is one this catalog cannot provision" need
+    # different answers, and today every uncovered agent is the second.
+    for entry in inv.agent:
+      if coverage.hasRealization(entry):
+        continue
+      checkpoint(entry.name)
+      check entry.realization_blocked.strip().len > 0
+      check entry.realization_blocked.contains("npm")
+
+  test "the report renders every row it was given":
+    let report = coverage.renderReport(inv)
+    for entry in inv.agent:
+      check report.contains(entry.name)
+    for entry in inv.uncovered:
+      check report.contains(entry.name)
+    check report.contains("No interface in this catalog")
+    check report.contains("Interface defined, no realization")
