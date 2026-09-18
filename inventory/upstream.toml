@@ -55,27 +55,36 @@ source_available = true
 main_programs = ["gemini"]
 release_channel = "npm"
 observed_pin = "0.59.0"
-packaged = ["interface"]
-realization_blocked = """
-Upstream publishes no release binary at the pinned version -- the release
-carries darwin archives only -- so the only distribution channel is npm.
+packaged = ["interface", "vendor"]
+packaged_version = "0.59.0"
+notes = """
+Realized from the npm registry tarball, not from a release binary: upstream
+publishes none at this pin (the GitHub release carries darwin archives only).
 
-The closure is NOT the obstacle, which is worth stating because it was
-assumed to be. `@google/gemini-cli@0.59.0` declares ZERO dependencies: the
-published tarball is a self-contained esbuild bundle, 20.7 MB compressed and
-98 MB unpacked, whose `bin` is `bundle/gemini.js` and which carries no
-`node_modules` at all. Verified by fetching it and running
-`node bundle/gemini.js --version` -> `0.59.0`.
+The closure was never the obstacle, though it was assumed to be.
+`@google/gemini-cli@0.59.0` declares ZERO dependencies -- the published
+tarball is a self-contained esbuild bundle, 20.7 MB compressed and 98 MB
+unpacked, whose `bin` is `bundle/gemini.js` and which carries no
+`node_modules` at all. Verified by `node bundle/gemini.js --version` ->
+`0.59.0`.
+
+What was missing was smaller and different: a way to express "the command is
+a SCRIPT run by an interpreter". A realized prefix goes on PATH as a
+directory, so the command's name there is a file's own name, and
+`bundle/gemini.js` is not a program. reprobuild now has `launcher`, which
+writes the launcher pair npm would have generated (`gemini` plus
+`gemini.cmd`) under the name `executableAlias` gives; `executableAlias`
+alone only ever gave one realized file a second NAME.
+
+`node` is a requirement this package cannot express: the launcher resolves
+its interpreter from PATH, so a recipe using this package must declare node.
 
 sha256 of the registry tarball:
 59dc2cdb098b3000d36e34a185fc873932df4fd9d00900e817f2b19cd349d98b
 
-What is missing is smaller and different: a way to express "the command is a
-SCRIPT run by an interpreter". A realized prefix goes on PATH as a directory,
-so the command's name there is a file's own name, and `bundle/gemini.js` is
-not a program. npm solves this by generating a launcher pair (`gemini` plus
-`gemini.cmd`); reprobuild has `executableAlias`, which gives one realized
-file a second NAME, and nothing that runs a file through another program.
+A from-source realization is still the primary one for an Apache-2.0 upstream
+and belongs under `packages/source/gemini-cli/`; this entry sits alongside it
+rather than standing in for it.
 """
 
 [[agent]]
@@ -86,18 +95,23 @@ source_available = true
 main_programs = ["qwen"]
 release_channel = "npm"
 observed_pin = "0.23.4"
-packaged = ["interface"]
-realization_blocked = """
-npm-only at the pinned version, and self-contained for the same reason as
-gemini-cli: `@qwen-code/qwen-code@0.23.4` declares zero dependencies and
-publishes a bundle whose `bin` is `cli-entry.js`, 110 MB unpacked. Verified
-by `node cli-entry.js --version` -> `0.23.4`.
+packaged = ["interface", "vendor"]
+packaged_version = "0.23.4"
+notes = """
+Realized from the npm registry tarball, for the same reasons as gemini-cli
+and through the same `launcher` field. `@qwen-code/qwen-code@0.23.4` declares
+zero dependencies and publishes a bundle whose `bin` is `cli-entry.js`, 110
+MB unpacked. Verified by `node cli-entry.js --version` -> `0.23.4`.
+
+Two differences from gemini-cli. The entry point sits at the package root
+rather than under `bundle/`, so the launcher pair and the PATH entry are the
+prefix root. And the tarball vendors ripgrep for four platforms under
+`vendor/ripgrep/{arm64,x64}-{darwin,linux}/`; that is upstream's own layout
+and is left alone, because the realized prefix should match the published
+artifact and the saving is not why this package exists.
 
 sha256 of the registry tarball:
 d590c8e27fdd112cac4b0ce5ee98febdb91cf660c01db86ae431870f8ee41a9d
-
-So this one needs the interpreter-launcher shape and no closure resolver,
-exactly as gemini-cli does.
 """
 
 [[agent]]

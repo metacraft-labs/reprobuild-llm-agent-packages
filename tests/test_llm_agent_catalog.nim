@@ -36,6 +36,8 @@ import "../packages/vendor/goose/repro" as gooseVendor
 import "../packages/vendor/opencode/repro" as opencodeVendor
 import "../packages/vendor/copilot/repro" as copilotVendor
 import "../packages/vendor/codex-acp/repro" as codexAcpVendor
+import "../packages/vendor/gemini-cli/repro" as geminiCliVendor
+import "../packages/vendor/qwen-code/repro" as qwenCodeVendor
 
 import ../tools/coverage_report as coverage
 
@@ -90,6 +92,43 @@ suite "LLM agent catalog":
     for slice in codexSlices:
       check slice.executablePath.startsWith("codex-")
       check slice.executableAlias == "codex.exe"
+
+  test "the two npm agents are launched, not executed":
+    # Both publish a self-contained esbuild bundle with ZERO dependencies,
+    # so neither needs a closure resolver -- what they needed was a way to
+    # be INVOKED. A realized prefix goes on PATH as a directory, so a
+    # command's name there is a file's own name, and `bundle/gemini.js` is
+    # not a program on any host.
+    #
+    # `launcher` is what closes that: realize writes the launcher pair npm
+    # would have generated, taking its name from `executableAlias`. This
+    # case pins all three fields together, because any one of them alone is
+    # a prefix whose declared command cannot run.
+    for (pkg, script, alias) in [
+      ("gemini-cli", "bundle/gemini.js", "gemini"),
+      ("qwen-code", "cli-entry.js", "qwen"),
+    ]:
+      let contributions = registeredProvisioningContributions().filterIt(
+        it.targetPackage == pkg)
+      check contributions.len == 1
+      let slices = contributions[0].tarballProvisioning
+      check slices.len == 1
+      let slice = slices[0]
+      checkpoint(pkg & " -> " & slice.url)
+      check slice.executablePath == script
+      check slice.executableAlias == alias
+      check slice.launcher == "node"
+      # npm tarballs are rooted at `package/`, a wrapper rather than part
+      # of the layout. Without the strip the declared path never resolves.
+      check slice.stripComponents == 1
+      check slice.archiveType == "tar.gz"
+      check slice.url.startsWith("https://registry.npmjs.org/")
+      # The bundle is JavaScript: the same bytes are correct on every host,
+      # and a stray platform constraint would make it unresolvable
+      # everywhere else. The per-platform part is the interpreter, which is
+      # a different package.
+      check slice.cpu.len == 0
+      check slice.os.len == 0
 
   test "the claude-code vendor realization covers six distinct platforms":
     let contributions = registeredProvisioningContributions().filterIt(
@@ -164,7 +203,26 @@ suite "the upstream inventory and the catalog agree":
     for entry in inv.uncovered:
       check report.contains(entry.name)
     check report.contains("No interface in this catalog")
-    check report.contains("Interface defined, no realization")
+
+  test "the report still has a section for an unrealized interface":
+    # Asserted against a SYNTHETIC entry rather than against the live
+    # inventory. It used to read the real one, which quietly made this a
+    # test that the catalog stays INCOMPLETE: the day the last unrealized
+    # interface got a realization -- gemini-cli and qwen-code, once
+    # `launcher` existed -- the section disappeared and a renderer test
+    # failed for a reason that was good news.
+    var synthetic = Inventory(agent: @[AgentEntry(
+      name: "fixture-agent",
+      provenance_class: "source-available",
+      main_programs: @["fixture"],
+      release_channel: "npm",
+      observed_pin: "1.0.0",
+      packaged: @["interface"],
+      realization_blocked: "npm-only, and nothing provisions it yet.")])
+    let syntheticReport = coverage.renderReport(synthetic)
+    check syntheticReport.contains("Interface defined, no realization")
+    check syntheticReport.contains("fixture-agent")
+    check syntheticReport.contains("npm-only")
 
 suite "non-redistributable payloads cannot reach a shared cache":
   ## The catalog's AGENTS.md has said since it was seeded that a
