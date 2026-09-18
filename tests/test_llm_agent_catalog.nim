@@ -165,3 +165,82 @@ suite "the upstream inventory and the catalog agree":
       check report.contains(entry.name)
     check report.contains("No interface in this catalog")
     check report.contains("Interface defined, no realization")
+
+suite "non-redistributable payloads cannot reach a shared cache":
+  ## The catalog's AGENTS.md has said since it was seeded that a
+  ## vendor-binary payload is fetched on the user's behalf and must not be
+  ## republished, because a cache is redistribution and redistribution is not
+  ## a right these licences grant. Until `nonRedistributable` landed in
+  ## reprobuild that sentence was documentation: `publishToolPrefix` uploaded
+  ## every realized prefix, and the only things stopping it were a global env
+  ## var and the absence of credentials. A developer who configured publish
+  ## credentials re-served Anthropic's and GitHub's binaries to everyone
+  ## pulling from that cache, and nothing in the recipe could object.
+  ##
+  ## These cases are what turn the sentence into a property. They are
+  ## deliberately keyed off the INVENTORY's `provenance_class` rather than a
+  ## hand-written list, so an agent added as vendor-binary tomorrow fails
+  ## here until its realization carries the flag.
+  let inv = coverage.loadInventoryFile()
+
+  proc vendorBinaryNames(): HashSet[string] =
+    for entry in inv.agent:
+      if entry.provenance_class == "vendor-binary":
+        result.incl(entry.name)
+
+  test "the inventory still knows of vendor-binary agents":
+    # Guards the cases below against becoming vacuous: if the classification
+    # ever disappears they would pass by having nothing to check.
+    check vendorBinaryNames().len > 0
+
+  test "every vendor-binary slice refuses republication":
+    let restricted = vendorBinaryNames()
+    var checkedSlices = 0
+    for contribution in registeredProvisioningContributions():
+      if contribution.targetPackage notin restricted:
+        continue
+      check contribution.tarballProvisioning.len > 0
+      for slice in contribution.tarballProvisioning:
+        checkpoint(contribution.targetPackage & " " & slice.os & "-" &
+          slice.cpu)
+        check slice.nonRedistributable
+        inc checkedSlices
+    # claude-code ships six platform slices and copilot two; a count that
+    # collapsed would mean the loop stopped finding them rather than that
+    # they all passed.
+    check checkedSlices >= 8
+
+  test "source-available agents are left publishable":
+    # The other half of the policy, and the reason the flag is per-entry
+    # rather than catalog-wide: publishing what we ARE entitled to publish is
+    # the point of a shared cache, and a blanket refusal would cost every
+    # other consumer the substitution.
+    var publishable = initHashSet[string]()
+    for entry in inv.agent:
+      if entry.provenance_class == "source-available":
+        publishable.incl(entry.name)
+    for contribution in registeredProvisioningContributions():
+      if contribution.targetPackage notin publishable:
+        continue
+      for slice in contribution.tarballProvisioning:
+        checkpoint(contribution.targetPackage & " " & slice.os & "-" &
+          slice.cpu)
+        check not slice.nonRedistributable
+
+  test "the flag survives the artifact a consumer actually reads":
+    # A consumer sees a contributed provisioning only through the interface
+    # artifact and the stub emitted from it. A flag that stopped at the
+    # recipe would be enforced here and nowhere else.
+    let artifact = artifactFromRegisteredDsl(
+      parentDir(getCurrentDir()) / "repro.nim")
+    let roundTrip = decodeProjectInterfaceArtifact(
+      encodeProjectInterfaceArtifact(artifact))
+    let restricted = vendorBinaryNames()
+    var seen = 0
+    for contribution in roundTrip.projectInterface.provisioningContributions:
+      if contribution.targetPackage notin restricted:
+        continue
+      for slice in contribution.tarballProvisioning:
+        check slice.nonRedistributable
+        inc seen
+    check seen >= 8
