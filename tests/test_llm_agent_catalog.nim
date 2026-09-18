@@ -302,3 +302,31 @@ suite "non-redistributable payloads cannot reach a shared cache":
         check slice.nonRedistributable
         inc seen
     check seen >= 8
+
+  test "the launcher survives the artifact a consumer actually reads":
+    # Same argument as the flag above, for the field that makes the two npm
+    # agents invocable at all. A launcher that stopped at the recipe would
+    # give a consumer a prefix whose declared command is a script nothing
+    # can execute -- and the failure would appear at RUN time, on the
+    # consumer's machine, not here.
+    #
+    # Worth its own case because the round-trip test nearby checks only
+    # that the CONTRIBUTION COUNT survives, which a dropped field does not
+    # change.
+    let artifact = artifactFromRegisteredDsl(
+      parentDir(getCurrentDir()) / "repro.nim")
+    let roundTrip = decodeProjectInterfaceArtifact(
+      encodeProjectInterfaceArtifact(artifact))
+    var launched: seq[string] = @[]
+    for contribution in roundTrip.projectInterface.provisioningContributions:
+      for slice in contribution.tarballProvisioning:
+        if slice.launcher.len == 0:
+          continue
+        launched.add(contribution.targetPackage)
+        check slice.launcher == "node"
+        # The name the launcher takes travels with it; without the alias
+        # there is nothing to write the pair under.
+        check slice.executableAlias.len > 0
+    check launched.len == 2
+    check "gemini-cli" in launched
+    check "qwen-code" in launched
