@@ -30,9 +30,10 @@ import "../packages/interfaces/qwen-code/repro" as qwenCodeInterface
 import "../packages/interfaces/copilot/repro" as copilotInterface
 import "../packages/interfaces/codex-acp/repro" as codexAcpInterface
 import "../packages/interfaces/claude-code-acp/repro" as claudeCodeAcpInterface
+import "../packages/interfaces/amp/repro" as ampInterface
 
 const PublishedPackages = [
-  "claude-code", "claude-code-acp", "codex", "codex-acp", "copilot",
+  "amp", "claude-code", "claude-code-acp", "codex", "codex-acp", "copilot",
   "gemini-cli", "goose", "opencode", "qwen-code"]
 
 let packages = registeredPackages()

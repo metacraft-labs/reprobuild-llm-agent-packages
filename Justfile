@@ -17,3 +17,17 @@ coverage:
 
 coverage-check:
   nim c -r --hints:off --warnings:off --nimcache:build/nimcache-coverage --out:build/coverage-report tools/coverage_report.nim --check
+
+# Regenerate a dependency-closure manifest from an npm lock file.
+#
+# A closure is derived data -- every entry is a `resolved` URL npm already
+# recorded -- so it is generated rather than transcribed, and a dependency
+# bump is this command rather than an afternoon of hand-editing.
+#
+#   just closure-manifest #     lock=../agent-harbor/scripts/agent-tools/package-lock.json #     root=@zed-industries/claude-code-acp #     out=packages/vendor/claude-code-acp/closures/claude-code-acp.manifest
+#
+# Pass `platform=<npm-os>-<npm-cpu>` for a package whose native binary
+# arrives through npm's optional-dependency mechanism; that follows
+# optional deps and keeps only the entries the platform admits.
+closure-manifest lock root out platform="":
+  nim c -r --hints:off --warnings:off --nimcache:build/nimcache-closure --out:build/npm-closure-manifest tools/npm_closure_manifest.nim --lock={{lock}} --root={{root}} --out={{out}} {{ if platform == "" { "" } else { "--platform=" + platform } }}

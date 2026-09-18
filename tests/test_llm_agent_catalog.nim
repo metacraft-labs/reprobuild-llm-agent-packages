@@ -30,6 +30,7 @@ import "../packages/interfaces/qwen-code/repro" as qwenCodeInterface
 import "../packages/interfaces/copilot/repro" as copilotInterface
 import "../packages/interfaces/codex-acp/repro" as codexAcpInterface
 import "../packages/interfaces/claude-code-acp/repro" as claudeCodeAcpInterface
+import "../packages/interfaces/amp/repro" as ampInterface
 
 import "../packages/vendor/claude-code/repro" as claudeCodeVendor
 import "../packages/vendor/codex/repro" as codexVendor
@@ -40,11 +41,12 @@ import "../packages/vendor/codex-acp/repro" as codexAcpVendor
 import "../packages/vendor/gemini-cli/repro" as geminiCliVendor
 import "../packages/vendor/qwen-code/repro" as qwenCodeVendor
 import "../packages/vendor/claude-code-acp/repro" as claudeCodeAcpVendor
+import "../packages/vendor/amp/repro" as ampVendor
 
 import ../tools/coverage_report as coverage
 
 const PublishedInterfaces = [
-  "claude-code", "claude-code-acp", "codex", "codex-acp", "copilot",
+  "amp", "claude-code", "claude-code-acp", "codex", "codex-acp", "copilot",
   "gemini-cli", "goose", "opencode", "qwen-code"]
 
 suite "LLM agent catalog":
@@ -154,6 +156,64 @@ suite "LLM agent catalog":
     check slice.cpu.len == 0
     check slice.os.len == 0
 
+  test "amp selects one native binary per platform, through its closure":
+    # npm's optional-dependency selection and reprobuild's per-platform
+    # slices are the same idea, so the mapping is direct: five slices over
+    # ONE wrapper archive, each carrying exactly that platform's binary.
+    #
+    # The entry point is the wrapper SCRIPT, not `bin/amp.exe` -- that file
+    # exists in the wrapper but is a 141-byte shell stub whose whole
+    # behaviour is to tell the user to reinstall. Declaring it would
+    # realize a command that does nothing else.
+    let contributions = registeredProvisioningContributions().filterIt(
+      it.targetPackage == "amp")
+    check contributions.len == 1
+    let slices = contributions[0].tarballProvisioning
+    check slices.len == 5
+    var platforms = initHashSet[string]()
+    var manifests = initHashSet[string]()
+    for slice in slices:
+      check slice.executablePath == "cli-wrapper.cjs"
+      check slice.executableAlias == "amp"
+      check slice.launcher == "node"
+      check slice.closureManifest.len > 0
+      # The native binary is a closed-source vendor artifact: fetched on a
+      # developer's behalf, never re-served from a shared cache.
+      check slice.nonRedistributable
+      platforms.incl(slice.cpu & "-" & slice.os)
+      manifests.incl(slice.closureManifest)
+    # One wrapper archive for all five -- the slices differ ONLY in which
+    # closure they carry, so a repeated manifest would mean one platform is
+    # serving another's binary.
+    check slices.mapIt(it.sha256).toHashSet().len == 1
+    check platforms.len == 5
+    check manifests.len == 5
+
+  test "every amp closure carries exactly its own platform's binary":
+    let repoRoot = parentDir(parentDir(currentSourcePath()))
+    for (manifest, pkg) in [
+      ("amp-win32-x64.manifest", "@ampcode/cli-win32-x64"),
+      ("amp-darwin-arm64.manifest", "@ampcode/cli-darwin-arm64"),
+      ("amp-darwin-x64.manifest", "@ampcode/cli-darwin-x64"),
+      ("amp-linux-x64.manifest", "@ampcode/cli-linux-x64"),
+      ("amp-linux-arm64.manifest", "@ampcode/cli-linux-arm64"),
+    ]:
+      let path = repoRoot / "packages" / "vendor" / "amp" / "closures" /
+        manifest
+      check fileExists(path)
+      var entries: seq[string] = @[]
+      for rawLine in readFile(path).splitLines():
+        let line = rawLine.strip()
+        if line.len == 0 or line.startsWith("#"):
+          continue
+        entries.add(line)
+      checkpoint(manifest)
+      # Exactly one: a closure with two platform packages would ship a
+      # binary the wrapper never resolves, and one with none would realize
+      # a prefix whose command reports "native binary not installed".
+      check entries.len == 1
+      check entries[0].startsWith("node_modules/" & pkg & " ")
+
   test "the committed closure manifest is well formed and pinned":
     # Read as DATA rather than trusted: every line must carry a
     # prefix-relative path, a 64-char sha256 and a registry URL, because a
@@ -261,7 +321,22 @@ suite "the upstream inventory and the catalog agree":
       check report.contains(entry.name)
     for entry in inv.uncovered:
       check report.contains(entry.name)
-    check report.contains("No interface in this catalog")
+
+  test "the report still has a section for an agent with no interface":
+    # Asserted against a SYNTHETIC entry, for the same reason the
+    # unrealized-interface case below is: reading the live inventory made
+    # this a test that the catalog stays INCOMPLETE. It now covers every
+    # agent the inventory knows -- `uncovered` is empty -- so the section
+    # is legitimately absent and the renderer still has to be able to
+    # produce it.
+    var synthetic = Inventory(uncovered: @[UncoveredEntry(
+      name: "fixture-upstream",
+      homepage: "https://example.invalid",
+      observed_pin: "1.0.0",
+      reason: "no interface yet; upstream ships only a hosted service.")])
+    let syntheticReport = coverage.renderReport(synthetic)
+    check syntheticReport.contains("No interface in this catalog")
+    check syntheticReport.contains("fixture-upstream")
 
   test "the report still has a section for an unrealized interface":
     # Asserted against a SYNTHETIC entry rather than against the live
@@ -376,17 +451,21 @@ suite "non-redistributable payloads cannot reach a shared cache":
       parentDir(getCurrentDir()) / "repro.nim")
     let roundTrip = decodeProjectInterfaceArtifact(
       encodeProjectInterfaceArtifact(artifact))
-    var launched: seq[string] = @[]
+    var launched = initHashSet[string]()
     for contribution in roundTrip.projectInterface.provisioningContributions:
       for slice in contribution.tarballProvisioning:
         if slice.launcher.len == 0:
           continue
-        launched.add(contribution.targetPackage)
+        # A SET, not a count: `amp` carries five platform slices and every
+        # one of them declares the launcher, so counting slices would make
+        # this assertion move whenever a platform is added.
+        launched.incl(contribution.targetPackage)
         check slice.launcher == "node"
         # The name the launcher takes travels with it; without the alias
         # there is nothing to write the pair under.
         check slice.executableAlias.len > 0
-    check launched.len == 3
+    check launched.len == 4
     check "gemini-cli" in launched
     check "qwen-code" in launched
     check "claude-code-acp" in launched
+    check "amp" in launched

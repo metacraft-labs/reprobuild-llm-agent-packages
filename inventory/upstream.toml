@@ -115,6 +115,43 @@ d590c8e27fdd112cac4b0ce5ee98febdb91cf660c01db86ae431870f8ee41a9d
 """
 
 [[agent]]
+name = "amp"
+homepage = "https://ampcode.com"
+provenance_class = "vendor-binary"
+source_available = false
+main_programs = ["amp"]
+release_channel = "npm"
+observed_pin = "0.0.1782120930-g64087b"
+packaged = ["interface", "vendor"]
+packaged_version = "0.0.1782120930-g64087b"
+notes = """
+The npm shape that genuinely needed a closure, and the one the inventory
+previously described as the larger of the two.
+
+What upstream publishes under `@ampcode/cli` is a 2.3 KB wrapper: a
+`cli-wrapper.cjs`, a `package.json`, and a 141-byte `bin/amp.exe` that is
+NOT a program -- it is a shell stub printing "Amp native binary not
+installed". The program is a per-platform native binary in one of five
+sibling packages that npm installs through OPTIONAL dependencies, keeping
+only the one whose os/cpu constraints match the host; `cli-wrapper.cjs`
+resolves it at run time with `require.resolve` and spawns it.
+
+npm's optional-dependency selection and reprobuild's per-platform slices
+are the same idea, so the realization is five slices over ONE wrapper
+archive, each with a generated closure manifest carrying exactly that
+platform's binary package. The declared executable is the wrapper SCRIPT,
+not `bin/amp.exe` -- declaring the stub would realize a command whose whole
+behaviour is to tell the user to reinstall.
+
+Classified vendor-binary despite arriving through npm: there is no
+published source for the native binary, so a from-source realization is
+not merely unbuilt, it is unavailable. Every slice refuses republication.
+
+`node` is a requirement this package cannot express: the launcher resolves
+its interpreter from PATH, so a recipe using amp must declare node.
+"""
+
+[[agent]]
 name = "claude-code-acp"
 homepage = "https://github.com/zed-industries/claude-code-acp"
 provenance_class = "source-available"
@@ -223,20 +260,4 @@ judgement.
 # that has an interface after all.
 # ---------------------------------------------------------------------------
 
-[[uncovered]]
-name = "amp"
-homepage = "https://ampcode.com"
-observed_pin = "0.0.1782120930-g64087b"
-reason = """
-npm-only, and unlike gemini-cli and qwen-code this one genuinely needs a
-dependency closure. `@sourcegraph/amp` is an 895-byte wrapper: it declares
-one dependency, `@ampcode/cli`, and its `bin` points at
-`node_modules/@ampcode/cli/bin/amp.exe` -- a platform-specific NATIVE binary
-reached through npm's optional-dependency mechanism. Resolving that means
-reading a lockfile and selecting per platform, which is the larger of the two
-npm shapes.
-
-Its version scheme is also not semver, so the interface's version constraint
-grammar would need a decision before one could be written.
-"""
 
