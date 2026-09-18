@@ -29,10 +29,11 @@ import "../packages/interfaces/opencode/repro" as opencodeInterface
 import "../packages/interfaces/qwen-code/repro" as qwenCodeInterface
 import "../packages/interfaces/copilot/repro" as copilotInterface
 import "../packages/interfaces/codex-acp/repro" as codexAcpInterface
+import "../packages/interfaces/claude-code-acp/repro" as claudeCodeAcpInterface
 
 const PublishedPackages = [
-  "claude-code", "codex", "codex-acp", "copilot", "gemini-cli", "goose",
-  "opencode", "qwen-code"]
+  "claude-code", "claude-code-acp", "codex", "codex-acp", "copilot",
+  "gemini-cli", "goose", "opencode", "qwen-code"]
 
 let packages = registeredPackages()
 var selected = packages.filterIt(it.packageName in PublishedPackages)

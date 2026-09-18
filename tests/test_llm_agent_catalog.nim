@@ -29,6 +29,7 @@ import "../packages/interfaces/opencode/repro" as opencodeInterface
 import "../packages/interfaces/qwen-code/repro" as qwenCodeInterface
 import "../packages/interfaces/copilot/repro" as copilotInterface
 import "../packages/interfaces/codex-acp/repro" as codexAcpInterface
+import "../packages/interfaces/claude-code-acp/repro" as claudeCodeAcpInterface
 
 import "../packages/vendor/claude-code/repro" as claudeCodeVendor
 import "../packages/vendor/codex/repro" as codexVendor
@@ -38,12 +39,13 @@ import "../packages/vendor/copilot/repro" as copilotVendor
 import "../packages/vendor/codex-acp/repro" as codexAcpVendor
 import "../packages/vendor/gemini-cli/repro" as geminiCliVendor
 import "../packages/vendor/qwen-code/repro" as qwenCodeVendor
+import "../packages/vendor/claude-code-acp/repro" as claudeCodeAcpVendor
 
 import ../tools/coverage_report as coverage
 
 const PublishedInterfaces = [
-  "claude-code", "codex", "codex-acp", "copilot", "gemini-cli", "goose",
-  "opencode", "qwen-code"]
+  "claude-code", "claude-code-acp", "codex", "codex-acp", "copilot",
+  "gemini-cli", "goose", "opencode", "qwen-code"]
 
 suite "LLM agent catalog":
   test "each published interface is registered exactly once":
@@ -129,6 +131,63 @@ suite "LLM agent catalog":
       # a different package.
       check slice.cpu.len == 0
       check slice.os.len == 0
+
+  test "the ACP adapter carries its dependency closure, not a build step":
+    # The npm agent a self-contained bundle does not cover: 174 KB with
+    # five direct dependencies and 97 transitive. Declared as one tarball
+    # it would realize a prefix whose command cannot start; resolved with
+    # `npm install` at build time it would be a version-range resolution
+    # and a network fetch inside a build.
+    let contributions = registeredProvisioningContributions().filterIt(
+      it.targetPackage == "claude-code-acp")
+    check contributions.len == 1
+    let slices = contributions[0].tarballProvisioning
+    check slices.len == 1
+    let slice = slices[0]
+    check slice.closureManifest == "closures/claude-code-acp.manifest"
+    # The same launcher shape the other npm agents use: `dist/index.js` is
+    # a script, and the alias is the name npm's own `bin` publishes.
+    check slice.executablePath == "dist/index.js"
+    check slice.executableAlias == "claude-code-acp"
+    check slice.launcher == "node"
+    check slice.stripComponents == 1
+    check slice.cpu.len == 0
+    check slice.os.len == 0
+
+  test "the committed closure manifest is well formed and pinned":
+    # Read as DATA rather than trusted: every line must carry a
+    # prefix-relative path, a 64-char sha256 and a registry URL, because a
+    # malformed line is only discovered at realize time otherwise -- on
+    # whatever machine first tries to install the adapter.
+    # Anchored to this source file rather than to the working directory,
+    # which differs between `nim c -r` from the root and a built binary
+    # invoked from anywhere.
+    let repoRoot = parentDir(parentDir(currentSourcePath()))
+    let manifest = repoRoot /
+      "packages" / "vendor" / "claude-code-acp" / "closures" /
+      "claude-code-acp.manifest"
+    check fileExists(manifest)
+    var entries = 0
+    var paths = initHashSet[string]()
+    for rawLine in readFile(manifest).splitLines():
+      let line = rawLine.strip()
+      if line.len == 0 or line.startsWith("#"):
+        continue
+      let parts = line.splitWhitespace()
+      checkpoint(line)
+      check parts.len == 3
+      check parts[0].startsWith("node_modules/")
+      check (not parts[0].contains(".."))
+      check parts[1].len == 64
+      check parts[2].startsWith("https://registry.npmjs.org/")
+      # A path repeated across two entries means one dependency is
+      # overwriting another's tree, and the last one written would win
+      # silently.
+      check parts[0] notin paths
+      paths.incl(parts[0])
+      inc entries
+    # The closure npm recorded, minus the root archive itself.
+    check entries == 97
 
   test "the claude-code vendor realization covers six distinct platforms":
     let contributions = registeredProvisioningContributions().filterIt(
@@ -327,6 +386,7 @@ suite "non-redistributable payloads cannot reach a shared cache":
         # The name the launcher takes travels with it; without the alias
         # there is nothing to write the pair under.
         check slice.executableAlias.len > 0
-    check launched.len == 2
+    check launched.len == 3
     check "gemini-cli" in launched
     check "qwen-code" in launched
+    check "claude-code-acp" in launched

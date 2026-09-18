@@ -115,6 +115,42 @@ d590c8e27fdd112cac4b0ce5ee98febdb91cf660c01db86ae431870f8ee41a9d
 """
 
 [[agent]]
+name = "claude-code-acp"
+homepage = "https://github.com/zed-industries/claude-code-acp"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["claude-code-acp"]
+release_channel = "npm"
+observed_pin = "0.16.2"
+packaged = ["interface", "vendor"]
+packaged_version = "0.16.2"
+notes = """
+Realized from the npm registry tarball WITH ITS DEPENDENCY CLOSURE, which
+is what distinguishes it from gemini-cli and qwen-code: those publish
+self-contained bundles with zero dependencies and needed only a way to be
+invoked, while `@zed-industries/claude-code-acp@0.16.2` is 174 KB and
+declares five direct dependencies -- 97 transitive.
+
+The closure is a committed manifest of pinned archives
+(`packages/vendor/claude-code-acp/closures/claude-code-acp.manifest`),
+generated from the transitive closure npm recorded in Agent Harbor's
+`scripts/agent-tools/package-lock.json`. npm pins by sha512 `integrity`
+and reprobuild verifies sha256, so each archive was fetched once and
+hashed. The alternative -- an `npm install` build step -- would be a
+version-range resolution and a network fetch inside a build, which is what
+this catalog exists to remove.
+
+It is an ACP ADAPTER rather than a coding-agent CLI: it speaks the Agent
+Client Protocol to an editor and drives Claude Code on the other side, so a
+consumer composes it WITH an agent rather than instead of one. The protocol
+members that category needs are still not modelled, so its interface
+declares one executable, exactly as `codex-acp` does.
+
+`node` is a requirement this package cannot express: the launcher resolves
+its interpreter from PATH, so a recipe using it must declare node.
+"""
+
+[[agent]]
 name = "copilot"
 homepage = "https://github.com/github/copilot-cli"
 provenance_class = "vendor-binary"
@@ -204,22 +240,3 @@ Its version scheme is also not semver, so the interface's version constraint
 grammar would need a decision before one could be written.
 """
 
-[[uncovered]]
-name = "claude-code-acp"
-homepage = "https://github.com/zed-industries/claude-code-acp"
-observed_pin = "0.16.2"
-reason = """
-npm-only: the release carries no binary assets. Unlike gemini-cli and
-qwen-code it is not self-contained -- `@zed-industries/claude-code-acp@0.16.2`
-is 174 KB and declares five dependencies (`diff`, `minimatch`,
-`@agentclientprotocol/sdk`, `@modelcontextprotocol/sdk`,
-`@anthropic-ai/claude-agent-sdk`) -- so it needs the closure-resolving npm
-shape rather than the launcher-only one.
-
-It is also an ACP ADAPTER rather than a coding-agent CLI -- it speaks the
-Agent Client Protocol to an editor and drives Claude Code on the other side --
-so a consumer composes it WITH an agent rather than instead of one, and the
-protocol members that category needs are not modelled yet. `codex-acp` is the
-same category and DOES have an interface and a vendor realization, so the
-category is not the obstacle here; the distribution is.
-"""
