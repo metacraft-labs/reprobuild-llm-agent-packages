@@ -58,9 +58,24 @@ observed_pin = "0.59.0"
 packaged = ["interface"]
 realization_blocked = """
 Upstream publishes no release binary at the pinned version -- the release
-carries darwin archives only -- so the only distribution channel is npm, and
-an npm package needs its dependency closure resolved and pinned. That is a
-provisioning channel this catalog does not have yet, not a missing recipe.
+carries darwin archives only -- so the only distribution channel is npm.
+
+The closure is NOT the obstacle, which is worth stating because it was
+assumed to be. `@google/gemini-cli@0.59.0` declares ZERO dependencies: the
+published tarball is a self-contained esbuild bundle, 20.7 MB compressed and
+98 MB unpacked, whose `bin` is `bundle/gemini.js` and which carries no
+`node_modules` at all. Verified by fetching it and running
+`node bundle/gemini.js --version` -> `0.59.0`.
+
+sha256 of the registry tarball:
+59dc2cdb098b3000d36e34a185fc873932df4fd9d00900e817f2b19cd349d98b
+
+What is missing is smaller and different: a way to express "the command is a
+SCRIPT run by an interpreter". A realized prefix goes on PATH as a directory,
+so the command's name there is a file's own name, and `bundle/gemini.js` is
+not a program. npm solves this by generating a launcher pair (`gemini` plus
+`gemini.cmd`); reprobuild has `executableAlias`, which gives one realized
+file a second NAME, and nothing that runs a file through another program.
 """
 
 [[agent]]
@@ -73,7 +88,16 @@ release_channel = "npm"
 observed_pin = "0.23.4"
 packaged = ["interface"]
 realization_blocked = """
-npm-only at the pinned version, for the same reason as gemini-cli.
+npm-only at the pinned version, and self-contained for the same reason as
+gemini-cli: `@qwen-code/qwen-code@0.23.4` declares zero dependencies and
+publishes a bundle whose `bin` is `cli-entry.js`, 110 MB unpacked. Verified
+by `node cli-entry.js --version` -> `0.23.4`.
+
+sha256 of the registry tarball:
+d590c8e27fdd112cac4b0ce5ee98febdb91cf660c01db86ae431870f8ee41a9d
+
+So this one needs the interpreter-launcher shape and no closure resolver,
+exactly as gemini-cli does.
 """
 
 [[agent]]
@@ -154,8 +178,15 @@ name = "amp"
 homepage = "https://ampcode.com"
 observed_pin = "0.0.1782120930-g64087b"
 reason = """
-npm-only: the distribution is an npm package with no release binaries. Its
-version scheme is also not semver, so the interface's version constraint
+npm-only, and unlike gemini-cli and qwen-code this one genuinely needs a
+dependency closure. `@sourcegraph/amp` is an 895-byte wrapper: it declares
+one dependency, `@ampcode/cli`, and its `bin` points at
+`node_modules/@ampcode/cli/bin/amp.exe` -- a platform-specific NATIVE binary
+reached through npm's optional-dependency mechanism. Resolving that means
+reading a lockfile and selecting per platform, which is the larger of the two
+npm shapes.
+
+Its version scheme is also not semver, so the interface's version constraint
 grammar would need a decision before one could be written.
 """
 
@@ -164,11 +195,17 @@ name = "claude-code-acp"
 homepage = "https://github.com/zed-industries/claude-code-acp"
 observed_pin = "0.16.2"
 reason = """
-npm-only: the release carries no binary assets. It is also an ACP ADAPTER
-rather than a coding-agent CLI -- it speaks the Agent Client Protocol to an
-editor and drives Claude Code on the other side -- so a consumer composes it
-WITH an agent rather than instead of one, and the protocol members that
-category needs are not modelled yet. `codex-acp` is the same category and
-DOES have an interface and a vendor realization, so the category is not the
-obstacle here; the npm-only distribution is.
+npm-only: the release carries no binary assets. Unlike gemini-cli and
+qwen-code it is not self-contained -- `@zed-industries/claude-code-acp@0.16.2`
+is 174 KB and declares five dependencies (`diff`, `minimatch`,
+`@agentclientprotocol/sdk`, `@modelcontextprotocol/sdk`,
+`@anthropic-ai/claude-agent-sdk`) -- so it needs the closure-resolving npm
+shape rather than the launcher-only one.
+
+It is also an ACP ADAPTER rather than a coding-agent CLI -- it speaks the
+Agent Client Protocol to an editor and drives Claude Code on the other side --
+so a consumer composes it WITH an agent rather than instead of one, and the
+protocol members that category needs are not modelled yet. `codex-acp` is the
+same category and DOES have an interface and a vendor realization, so the
+category is not the obstacle here; the distribution is.
 """
