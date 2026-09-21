@@ -1,5 +1,6 @@
 test:
   nim c -r --hints:off --warnings:off --nimcache:build/nimcache-catalog --out:build/test-catalog tests/test_llm_agent_catalog.nim
+  nim c -r --hints:off --warnings:off --nimcache:build/nimcache-npm-closure --out:build/test-npm-closure tests/test_npm_closure_manifest.nim
 
 # Print the canonical interface fingerprints external catalogs pin.
 fingerprints:

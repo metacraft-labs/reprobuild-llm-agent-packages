@@ -36,9 +36,9 @@ import std/[algorithm, json, os, osproc, sets, strformat, strutils, tables]
 import repro_attest/measurement
 
 type
-  ClosureEntry = object
-    path: string
-    url: string
+  ClosureEntry* = object
+    path*: string
+    url*: string
 
 proc die(message: string) =
   stderr.writeLine("npm-closure-manifest: " & message)
@@ -107,6 +107,35 @@ proc closureOf(packages: JsonNode; root, platform: string): seq[ClosureEntry] =
       url: entry["resolved"].getStr()))
   result.sort(proc (a, b: ClosureEntry): int = cmp(a.path, b.path))
 
+proc installClosure*(packages: JsonNode): seq[ClosureEntry] =
+  ## Every archive a full ``npm ci`` would install — the BUILD closure, as
+  ## opposed to ``closureOf``'s runtime closure of one package.
+  ##
+  ## A from-source agent build runs ``npm ci`` and then the project's own
+  ## build script (esbuild / tsc / a bundler), so it needs the WHOLE locked
+  ## install, not one package's runtime subtree: the dev dependencies that do
+  ## the building, and — because every one of these agents is a workspace
+  ## monorepo — the dependencies of each workspace under ``packages/*``. A
+  ## lockfileVersion 2/3 lock has already resolved and HOISTED all of that
+  ## into its ``packages`` map under ``node_modules/`` keys, so the build
+  ## closure is simply those entries: no root to traverse and no workspace
+  ## resolution to redo, which is why this handles the monorepo layout the
+  ## per-package ``closureOf`` walk could not.
+  ##
+  ## A ``node_modules/`` entry that is a ``link`` is a symlink to a local
+  ## workspace, not a downloadable archive, and is skipped; one without a
+  ## ``resolved`` url (the root, or a bundled dep npm inlines) has no archive
+  ## to fetch either.
+  for key, entry in packages.pairs:
+    if not key.startsWith("node_modules/"):
+      continue
+    if entry.hasKey("link") and entry["link"].getBool():
+      continue
+    if not entry.hasKey("resolved"):
+      continue
+    result.add(ClosureEntry(path: key, url: entry["resolved"].getStr()))
+  result.sort(proc (a, b: ClosureEntry): int = cmp(a.path, b.path))
+
 proc sha256OfUrl(url, scratch: string): string =
   ## Fetched with ``curl`` rather than an in-process client on purpose:
   ## this tool runs when a dependency changes, not in a build, and
@@ -122,23 +151,33 @@ proc sha256OfUrl(url, scratch: string): string =
 
 when isMainModule:
   var lockPath, root, outPath, platform = ""
+  var buildClosure = false
   for i in 1 .. paramCount():
     let arg = paramStr(i)
     if arg.startsWith("--lock="): lockPath = arg["--lock=".len .. ^1]
     elif arg.startsWith("--root="): root = arg["--root=".len .. ^1]
     elif arg.startsWith("--out="): outPath = arg["--out=".len .. ^1]
     elif arg.startsWith("--platform="): platform = arg["--platform=".len .. ^1]
+    elif arg == "--build-closure": buildClosure = true
     else: die("unknown argument: " & arg)
-  if lockPath.len == 0 or root.len == 0 or outPath.len == 0:
-    die("usage: --lock=<package-lock.json> --root=<name> --out=<manifest> " &
-      "[--platform=<npm-os>-<npm-cpu>]")
+  # A build closure is the whole `npm ci` install, so it has no single root
+  # package to name; a runtime closure is rooted at one package.
+  if lockPath.len == 0 or outPath.len == 0 or
+      (not buildClosure and root.len == 0):
+    die("usage: --lock=<package-lock.json> --out=<manifest> " &
+      "(--root=<name> [--platform=<npm-os>-<npm-cpu>] | --build-closure)")
+  if buildClosure and (root.len > 0 or platform.len > 0):
+    die("--build-closure is the whole install and takes neither --root nor " &
+      "--platform")
   if not fileExists(lockPath):
     die("no lock file at " & lockPath)
 
   let lock = parseFile(lockPath)
   if not lock.hasKey("packages"):
     die("not a lockfileVersion 2/3 lock file (no `packages`): " & lockPath)
-  let entries = closureOf(lock["packages"], root, platform)
+  let entries =
+    if buildClosure: installClosure(lock["packages"])
+    else: closureOf(lock["packages"], root, platform)
   if entries.len == 0:
     die("closure of " & root & " is empty; nothing to write")
 
