@@ -5,9 +5,11 @@
 ## dependencies. A from-source agent build needs the opposite: the whole
 ## `npm ci` install — dev dependencies that do the building, and every
 ## workspace's dependencies — which a lockfileVersion 2/3 lock has already
-## hoisted into its `packages` map under `node_modules/` keys. `installClosure`
-## is exactly those entries. These cases pin that it takes the build tools,
-## skips workspace symlinks and un-resolved entries, and is order-stable.
+## resolved into its `packages` map. `installClosure` is every installed
+## entry there (any key with a `node_modules/` segment, hoisted or nested
+## under a workspace). These cases pin that it takes the build tools and
+## workspace-nested versions, skips workspace symlinks and un-resolved
+## entries, and is order-stable.
 
 import std/[json, sequtils, unittest]
 
@@ -26,9 +28,18 @@ suite "npm build closure (installClosure)":
       "node_modules/typescript": {"resolved": "https://r/typescript-5.tgz"},
       "node_modules/react": {"resolved": "https://r/react-18.tgz"},
       "packages/cli": {"name": "@agent/cli"},
+      "packages/cli/node_modules/tar": {"resolved": "https://r/tar-7.tgz"},
       "node_modules/@agent/cli": {"link": true, "resolved": "packages/cli"},
       "node_modules/inlined": {"version": "1"}
     }""")
+
+  test "a version nested under a workspace is in the closure":
+    # npm keeps a version that conflicts with the hoisted one under the
+    # workspace that needs it. It is an archive `npm ci` installs, so an
+    # offline mirror without it fails; the old `node_modules/`-prefix filter
+    # dropped every such entry (104 of them in gemini-cli v0.59.0).
+    let paths = installClosure(lockPackages()).mapIt(it.path)
+    check "packages/cli/node_modules/tar" in paths
 
   test "the build tools (devDependencies) are in the closure":
     let paths = installClosure(lockPackages()).mapIt(it.path)
@@ -49,12 +60,13 @@ suite "npm build closure (installClosure)":
     check "" notin paths
     check "packages/cli" notin paths
 
-  test "exactly the three resolvable node_modules archives, sorted":
+  test "exactly the four installed archives, sorted":
     let entries = installClosure(lockPackages())
     check entries.mapIt(it.path) == @[
       "node_modules/esbuild",
       "node_modules/react",
-      "node_modules/typescript"]
+      "node_modules/typescript",
+      "packages/cli/node_modules/tar"]
     check entries[0].url == "https://r/esbuild-1.tgz"
 
   test "an empty packages map yields an empty closure, not an error":

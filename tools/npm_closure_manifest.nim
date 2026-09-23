@@ -116,18 +116,27 @@ proc installClosure*(packages: JsonNode): seq[ClosureEntry] =
   ## install, not one package's runtime subtree: the dev dependencies that do
   ## the building, and — because every one of these agents is a workspace
   ## monorepo — the dependencies of each workspace under ``packages/*``. A
-  ## lockfileVersion 2/3 lock has already resolved and HOISTED all of that
-  ## into its ``packages`` map under ``node_modules/`` keys, so the build
-  ## closure is simply those entries: no root to traverse and no workspace
-  ## resolution to redo, which is why this handles the monorepo layout the
-  ## per-package ``closureOf`` walk could not.
+  ## lockfileVersion 2/3 lock has already resolved all of that into its
+  ## ``packages`` map, so the build closure is simply every INSTALLED entry:
+  ## no root to traverse and no workspace resolution to redo, which is why
+  ## this handles the monorepo layout the per-package ``closureOf`` walk
+  ## could not.
   ##
-  ## A ``node_modules/`` entry that is a ``link`` is a symlink to a local
-  ## workspace, not a downloadable archive, and is skipped; one without a
-  ## ``resolved`` url (the root, or a bundled dep npm inlines) has no archive
-  ## to fetch either.
+  ## "Installed" means the key has a ``node_modules/`` segment ANYWHERE, not
+  ## only at its start. npm hoists what it can to the root, but a version
+  ## that conflicts with the hoisted one stays nested under the workspace
+  ## that needs it — ``packages/cli/node_modules/tar`` — and those are real
+  ## archives ``npm ci`` installs. Taking only ``node_modules/``-prefixed keys
+  ## silently dropped them: gemini-cli v0.59.0 has 104, and the offline mirror
+  ## would have been missing every one. The root (``""``) and the workspace
+  ## source entries themselves (``packages/cli``) have no ``node_modules/``
+  ## segment and are never emitted.
+  ##
+  ## An entry that is a ``link`` is a symlink to a local workspace, not a
+  ## downloadable archive, and is skipped; one without a ``resolved`` url
+  ## (the root, or a bundled dep npm inlines) has no archive to fetch either.
   for key, entry in packages.pairs:
-    if not key.startsWith("node_modules/"):
+    if "node_modules/" notin key:
       continue
     if entry.hasKey("link") and entry["link"].getBool():
       continue
