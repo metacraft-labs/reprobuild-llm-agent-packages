@@ -52,7 +52,7 @@ provisioningFor "claude-code":
   # prints for the interface in `packages/interfaces/claude-code/`. If that
   # interface changes, this contribution is REJECTED rather than applied to
   # a contract it was never checked against.
-  interfaceFingerprint "f002b7ee0b2abf023c47367651319e4673dfeecce99bd7c65b9f5f0eb9f3aee8"
+  interfaceFingerprint "31fbc6e0b04645142f52d7c1237134929e9a015ec9c50ebed5dbe492d5a91c7e"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url = ClaudeCodeBase & "win32-x64/claude.exe",

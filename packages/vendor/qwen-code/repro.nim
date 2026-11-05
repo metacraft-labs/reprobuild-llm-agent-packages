@@ -33,7 +33,7 @@ const
     "d590c8e27fdd112cac4b0ce5ee98febdb91cf660c01db86ae431870f8ee41a9d"
 
 provisioningFor "qwen-code":
-  interfaceFingerprint "05178cec761286d9df7e0ac74aad6a90fcf9fc24dbc68b9b6055266b2720a7be"
+  interfaceFingerprint "7de2d0a26186c814d92b501d636501a6fb167f816c77a4f7e5e69ffd48a7d832"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url =

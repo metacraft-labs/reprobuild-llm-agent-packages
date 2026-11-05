@@ -50,7 +50,7 @@ just fingerprints
 
 ```nim
 provisioningFor "claude-code":
-  interfaceFingerprint "f002b7ee…"
+  interfaceFingerprint "31fbc6e0…"
   contributor "github:your-org/your-catalog"
   scoopApp bucket = "main", app = "…", executablePath = "…"
 ```

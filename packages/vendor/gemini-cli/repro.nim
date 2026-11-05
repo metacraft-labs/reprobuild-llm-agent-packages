@@ -45,7 +45,7 @@ const
     "59dc2cdb098b3000d36e34a185fc873932df4fd9d00900e817f2b19cd349d98b"
 
 provisioningFor "gemini-cli":
-  interfaceFingerprint "8e462ed89c3159f13d4628088d92af27675787b1d097165340ecd0e2fd4b84ad"
+  interfaceFingerprint "2119961f6fff3703b5b209738d122d0dcc154b7ac1957e34384eb8ec64d030cc"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url = "https://registry.npmjs.org/@google/gemini-cli/-/gemini-cli-" &

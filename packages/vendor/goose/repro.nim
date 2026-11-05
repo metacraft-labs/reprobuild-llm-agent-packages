@@ -23,7 +23,7 @@ import repro_project_dsl
 const GooseVersion = "1.50.1"
 
 provisioningFor "goose":
-  interfaceFingerprint "b244dfcfa0303c980d7682a73798e098a311a2b7c6f35a20cb0a35792736aad1"
+  interfaceFingerprint "9a56c85278f0912ff01f58be0ae739137074809e298139b8138678fceeda38c3"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url = "https://github.com/block/goose/releases/download/v" &
