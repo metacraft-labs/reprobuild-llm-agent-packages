@@ -65,7 +65,7 @@ const
     "https://registry.npmjs.org/@ampcode/cli/-/cli-" & AmpVersion & ".tgz"
 
 provisioningFor "amp":
-  interfaceFingerprint "3e39e906554c2d829e320950837132bc0768fafb30c7e186517ce68890ff384f"
+  interfaceFingerprint "b0852ba84c78589d0c5ba2d51d3da31b461431a3ec66200c66359df5d13fbbf7"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url = AmpWrapperUrl,

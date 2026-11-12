@@ -18,7 +18,7 @@ import repro_project_dsl
 const CodexAcpVersion = "0.14.0"
 
 provisioningFor "codex-acp":
-  interfaceFingerprint "263af3ec34ec0b99e657f546b9a40c187540b40c6f89bd744c4a6bd1ec3e6ec5"
+  interfaceFingerprint "bebd1dcb96e756936e2afd040b31448a80603979bd036b7f7ee7e1a91cc2a5b5"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url = "https://github.com/zed-industries/codex-acp/releases/download/v" &

@@ -32,7 +32,7 @@ const
     CodexVersion & "/codex-"
 
 provisioningFor "codex":
-  interfaceFingerprint "5b98987bb4b19640ed86f20cd66df0eaf9a1ca8311e16a27e495cf0f47bc1518"
+  interfaceFingerprint "fa936c46615d714d4efdaec268a339ef49b5051208a9d6bb9b656247db2615c8"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url = CodexBase & "x86_64-pc-windows-msvc.exe.zip",

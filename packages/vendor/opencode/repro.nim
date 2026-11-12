@@ -21,7 +21,7 @@ const
     OpencodeVersion & "/opencode-windows-"
 
 provisioningFor "opencode":
-  interfaceFingerprint "c3febd17d26ee16b06d4420469c559b8b9ea01599c2a14f2bed97d19b6a90fb0"
+  interfaceFingerprint "1bb893b6670012ac33ce2ba8db323c022ec1b2d01d31860924508fb0dcc44a6d"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url = OpencodeBase & "x64.zip",

@@ -55,7 +55,7 @@ const
     "4713b3bba04650850929e4db1e680073d03bf55dcdf8bfcb3bb1cbd82bcfa99e"
 
 provisioningFor "claude-code-acp":
-  interfaceFingerprint "7ca396bad2119735e7f2e906216c795b447c863ac1e43b0364e0c045cfea5496"
+  interfaceFingerprint "526de17416f25d3fd2cedbce9a90c0a655faf17fb5718a4c438294a509354e04"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url =

@@ -25,7 +25,7 @@ const
     CopilotVersion & "/copilot-win32-"
 
 provisioningFor "copilot":
-  interfaceFingerprint "62999373bd6ca7c7e7bef189a0141d4fb402ff93d95f8d87ef2408acbff1a6b5"
+  interfaceFingerprint "b876b6b6cbe23b776de892b43c46e5a3afc38106ced4c7bee31fc57ae7bc54ad"
   contributor "github:metacraft-labs/reprobuild-llm-agent-packages"
 
   tarball url = CopilotBase & "x64.zip",
