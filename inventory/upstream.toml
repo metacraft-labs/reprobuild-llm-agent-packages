@@ -314,8 +314,8 @@ notes = """
 MIT (LICENSE at tag @moonshot-ai/kimi-code@2.6.3), pnpm workspace; no source
 realization is expressible with the current record kinds. The vendor payload
 is upstream's flat per-platform release tarball, six slices, digests from
-upstream's .tar.gz.sha256 assets. The recipe cannot set
-KIMI_CODE_NO_AUTO_UPDATE=1; the consumer must. observed_pin is the
+upstream's .tar.gz.sha256 assets. Each slice sets
+KIMI_CODE_NO_AUTO_UPDATE=1 as an activated-environment binding. observed_pin is the
 numtide/llm-agents.nix pin at 3c4f3e7c.
 """
 
@@ -349,9 +349,9 @@ packaged_version = "1.5.2"
 notes = """
 MIT (LICENSE at tag v1.5.2). Vendor payload is upstream's bun-compiled release
 archive, six slices, digests from the release SHA256SUMS; no source
-realization is expressible (bun build --compile over an npm workspace). The
-recipe cannot set PI_SKIP_VERSION_CHECK=1 or PI_TELEMETRY=0; the consumer
-must.
+realization is expressible (bun build --compile over an npm workspace). Each
+slice sets PI_SKIP_VERSION_CHECK=1 and PI_TELEMETRY=0 as activated-environment
+bindings.
 """
 
 [[agent]]
@@ -386,7 +386,7 @@ macOS arm64 only: upstream publishes no macOS x86_64 bundle, no Linux desktop
 build, and a Windows MSIX bundle the tarball record cannot install. The bundle
 is upstream's signed, notarized binary build, not from source. The stable
 channel lags the GitHub tags (0.22.0 vs 0.23.2). In-app Squirrel.Mac
-self-update is not disabled by the recipe. observed_pin is the
+self-update is not disabled by the recipe (upstream documents no off switch). observed_pin is the
 numtide/llm-agents.nix pin at 3c4f3e7c.
 """
 
@@ -404,8 +404,9 @@ notes = """
 Realized from the npm registry tarball (compiled dist/) plus a per-platform
 closure manifest (362-367 entries, generated with --build-closure because
 --root cannot handle bundleDependencies or nested lock entries). Needs node
->=24.16 on PATH. The update check is on by default; OPENCLAW_NO_AUTO_UPDATE=1
-or update.checkOnStart: false turns it off, and the recipe cannot set either.
+>=24.16 on PATH. The update check is on by default; each slice sets
+OPENCLAW_NO_AUTO_UPDATE=1 as an activated-environment binding, and the recipe
+cannot set update.checkOnStart.
 observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c.
 """
 

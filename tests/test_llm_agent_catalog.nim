@@ -16,7 +16,7 @@
 ##     is the specific authoring mistake that yields a package which
 ##     resolves everywhere and runs on one machine.
 
-import std/[os, sequtils, sets, strutils, unittest]
+import std/[os, sequtils, sets, strutils, tables, unittest]
 
 import repro_interface_artifacts
 import repro_project_dsl
@@ -284,6 +284,60 @@ suite "LLM agent catalog":
     check digests.len == 6
     check platforms.len == 6
 
+  test "each new multi-platform agent covers distinct platforms with distinct digests":
+    # The same guard as claude-code's above, for the agents whose slices
+    # are separate binaries. `openclaw` is deliberately absent: its slices
+    # share one root archive and differ by closure manifest, which the next
+    # case checks.
+    for (pkg, count) in [("grok", 6), ("kimi-code", 6), ("pi", 6),
+                         ("muse-code", 6), ("zcode", 4)]:
+      let contributions = registeredProvisioningContributions().filterIt(
+        it.targetPackage == pkg)
+      check contributions.len == 1
+      let slices = contributions[0].tarballProvisioning
+      checkpoint(pkg)
+      check slices.len == count
+      var digests = initHashSet[string]()
+      var platforms = initHashSet[string]()
+      for slice in slices:
+        digests.incl(slice.sha256)
+        platforms.incl(slice.cpu & "-" & slice.os)
+      check digests.len == count
+      check platforms.len == count
+
+  test "every openclaw slice names its own closure, carrying its own platform":
+    # One root archive for every platform (the npm package is JavaScript);
+    # what differs is the closure, so a repeated manifest or a manifest
+    # whose native packages belong to another platform is the failure this
+    # catches.
+    let contributions = registeredProvisioningContributions().filterIt(
+      it.targetPackage == "openclaw")
+    check contributions.len == 1
+    let slices = contributions[0].tarballProvisioning
+    check slices.len == 6
+    check slices.mapIt(it.sha256).toHashSet().len == 1
+    check slices.mapIt(it.closureManifest).toHashSet().len == 6
+    let repoRoot = parentDir(parentDir(currentSourcePath()))
+    for slice in slices:
+      let path = repoRoot / "packages" / "vendor" / "openclaw" / slice.closureManifest
+      checkpoint(slice.closureManifest)
+      check fileExists(path)
+      let text = readFile(path)
+      # npm's name for the platform, which is what the closure's native
+      # packages are keyed on.
+      let npmOs = case slice.os
+        of "windows": "win32"
+        of "macos": "darwin"
+        else: "linux"
+      let npmCpu = if slice.cpu == "x86_64": "x64" else: "arm64"
+      check slice.closureManifest.contains(npmOs & "-" & npmCpu)
+      check text.contains("-" & npmOs & "-" & npmCpu) or
+        text.contains("-" & npmOs & "-" & npmCpu & "-")
+      # A closure never carries another OS's native esbuild.
+      for other in ["win32", "darwin", "linux"]:
+        if other != npmOs:
+          check not text.contains("@esbuild/" & other & "-")
+
   test "the interface artifact round-trips with its contributions":
     let artifact = artifactFromRegisteredDsl(
       parentDir(getCurrentDir()) / "repro.nim")
@@ -292,6 +346,31 @@ suite "LLM agent catalog":
     let roundTrip = decodeProjectInterfaceArtifact(
       encodeProjectInterfaceArtifact(artifact))
     check roundTrip.projectInterface.provisioningContributions.len == expected
+
+  test "the self-update bindings survive the artifact a consumer actually reads":
+    # The recipe's `env` is the only isolation of a vendor agent's
+    # self-update this catalog can express, and a consumer sees it only
+    # through the artifact. A binding dropped by the codec would leave the
+    # recipe reading as isolated while the program updated itself.
+    let artifact = artifactFromRegisteredDsl(
+      parentDir(getCurrentDir()) / "repro.nim")
+    let roundTrip = decodeProjectInterfaceArtifact(
+      encodeProjectInterfaceArtifact(artifact))
+    var expected = initTable[string, seq[string]]()
+    expected["grok"] = @["GROK_DISABLE_AUTOUPDATER=1"]
+    expected["muse-code"] = @["MUSE_NO_AUTO_UPDATE=1"]
+    expected["kimi-code"] = @["KIMI_CODE_NO_AUTO_UPDATE=1"]
+    expected["pi"] = @["PI_SKIP_VERSION_CHECK=1", "PI_TELEMETRY=0"]
+    expected["openclaw"] = @["OPENCLAW_NO_AUTO_UPDATE=1"]
+    var seen = initHashSet[string]()
+    for contribution in roundTrip.projectInterface.provisioningContributions:
+      if contribution.targetPackage notin expected:
+        continue
+      for slice in contribution.tarballProvisioning:
+        checkpoint(contribution.targetPackage & " " & slice.os & "-" & slice.cpu)
+        check slice.detail.env == expected[contribution.targetPackage]
+        seen.incl(contribution.targetPackage)
+    check seen.len == expected.len
 
 suite "the upstream inventory and the catalog agree":
   ## `inventory/upstream.toml` is what the coverage report is generated

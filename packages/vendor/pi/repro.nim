@@ -77,16 +77,13 @@
 ## Pi itself. Upstream's switches are ``PI_SKIP_VERSION_CHECK=1`` (no
 ## version request), ``PI_TELEMETRY=0``, ``PI_OFFLINE=1``, and
 ## ``PI_SELF_UPDATE_COMMAND`` to redirect what ``pi update`` runs. The
-## ``tarball`` record has no field that sets an environment variable or wraps
-## the executable, so THIS RECIPE DOES NOT DISABLE THE VERSION CHECK OR
-## TELEMETRY. The consumer must export ``PI_SKIP_VERSION_CHECK=1`` and
-## ``PI_TELEMETRY=0`` (numtide's wrapper does the same). Per upstream's
-## changelog the check disables "new version notifications", and ``pi update``
-## runs only when the user invokes it, so I found no unprompted rewrite of the
-## prefix; a user who runs ``pi update`` would still try.
-##
-## The interface fingerprint below is a placeholder until the catalog
-## manager computes it.
+## each slice therefore declares ``env = "PI_SKIP_VERSION_CHECK=1"`` and
+## ``env = "PI_TELEMETRY=0"``, exported by the ``tarball`` record as bindings of
+## the activated home environment. LIMIT: bindings, not a wrapper, so a ``pi``
+## started outside an activated shell is not covered. Per upstream's changelog the
+## check disables "new version notifications", and ``pi update`` runs only when
+## the user invokes it, so no unprompted rewrite of the prefix was found; a user
+## who runs ``pi update`` would still try.
 
 import repro_project_dsl
 
@@ -104,6 +101,8 @@ provisioningFor "pi":
     archiveType = "tar.gz",
     stripComponents = 1,
     executablePath = "pi",
+    env = "PI_SKIP_VERSION_CHECK=1",
+    env = "PI_TELEMETRY=0",
     packageId = "pi@" & PiVersion,
     cpu = "x86_64",
     os = "linux",
@@ -115,6 +114,8 @@ provisioningFor "pi":
     archiveType = "tar.gz",
     stripComponents = 1,
     executablePath = "pi",
+    env = "PI_SKIP_VERSION_CHECK=1",
+    env = "PI_TELEMETRY=0",
     packageId = "pi@" & PiVersion,
     cpu = "aarch64",
     os = "linux",
@@ -126,6 +127,8 @@ provisioningFor "pi":
     archiveType = "tar.gz",
     stripComponents = 1,
     executablePath = "pi",
+    env = "PI_SKIP_VERSION_CHECK=1",
+    env = "PI_TELEMETRY=0",
     packageId = "pi@" & PiVersion,
     cpu = "aarch64",
     os = "macos",
@@ -137,6 +140,8 @@ provisioningFor "pi":
     archiveType = "tar.gz",
     stripComponents = 1,
     executablePath = "pi",
+    env = "PI_SKIP_VERSION_CHECK=1",
+    env = "PI_TELEMETRY=0",
     packageId = "pi@" & PiVersion,
     cpu = "x86_64",
     os = "macos",
@@ -147,6 +152,8 @@ provisioningFor "pi":
     sha256 = "e6adb8cb8c84eca14391ad24b363de9d2be98a89ca3ba3fdee1fa4de32b7f2e8",
     archiveType = "zip",
     executablePath = "pi.exe",
+    env = "PI_SKIP_VERSION_CHECK=1",
+    env = "PI_TELEMETRY=0",
     packageId = "pi@" & PiVersion,
     cpu = "x86_64",
     os = "windows",
@@ -157,6 +164,8 @@ provisioningFor "pi":
     sha256 = "e83404bc5a6003ac950683edd9b6cf499dac91ec890d8439a8c32528de534a77",
     archiveType = "zip",
     executablePath = "pi.exe",
+    env = "PI_SKIP_VERSION_CHECK=1",
+    env = "PI_TELEMETRY=0",
     packageId = "pi@" & PiVersion,
     cpu = "aarch64",
     os = "windows",

@@ -76,10 +76,10 @@
 ##   ``provider: generic, url: https://hermes-assets.nousresearch.com/releases/darwin/stable/``.
 ##   Upstream's docs say checks never download automatically and an update
 ##   is applied only on the user's request, but there is a user-facing apply
-##   path. The record kinds have no flag or environment field for a
-##   realization to disable it with (the ``env`` argument belongs to
-##   installers), and the sealed bundle cannot be edited without breaking
-##   its signature, so the update path is NOT disabled by this recipe. A
+##   path. No off switch for it is documented upstream (so there is
+##   no variable for the record's ``env`` field to set), and the sealed
+##   bundle cannot be edited without breaking its signature, so the update
+##   path is NOT disabled by this recipe. A
 ##   store-placed bundle that an in-app update replaced would diverge from
 ##   its content-addressed identity. Treat that as an open gap; the fix
 ##   belongs in upstream (a no-update channel/identity) or in the

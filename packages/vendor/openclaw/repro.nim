@@ -108,10 +108,12 @@
 ## * Self-update: on by default as a daily check, with automatic apply
 ##   configurable. Upstream's opt-outs are ``update.checkOnStart: false`` in
 ##   the config and ``OPENCLAW_NO_AUTO_UPDATE=1`` in the environment, which
-##   also stops automatic applies. The record kinds have no environment or
-##   default-config field for a realization to set these with (the ``env``
-##   argument belongs to installers), so this recipe does NOT disable the
-##   update path; the user or the consuming recipe must set one of the two.
+##   also stops automatic applies. Each slice declares
+##   ``env = "OPENCLAW_NO_AUTO_UPDATE=1"``, exported by the ``tarball`` record as
+##   a binding of the activated home environment (not a wrapper: a process
+##   started outside an activated shell is not covered). ``update.checkOnStart``
+##   is a config field the record kinds cannot set, so the daily check itself is
+##   not disabled.
 ##   ``openclaw update`` remains an explicit user command that would try to
 ##   change an installed tree.
 ##
@@ -145,6 +147,7 @@ provisioningFor "openclaw":
     executableAlias = "openclaw",
     launcher = "node",
     closureManifest = "closures/openclaw-win32-x64.manifest",
+    env = "OPENCLAW_NO_AUTO_UPDATE=1",
     packageId = "openclaw@" & OpenClawVersion,
     cpu = "x86_64",
     os = "windows",
@@ -159,6 +162,7 @@ provisioningFor "openclaw":
     executableAlias = "openclaw",
     launcher = "node",
     closureManifest = "closures/openclaw-win32-arm64.manifest",
+    env = "OPENCLAW_NO_AUTO_UPDATE=1",
     packageId = "openclaw@" & OpenClawVersion,
     cpu = "aarch64",
     os = "windows",
@@ -173,6 +177,7 @@ provisioningFor "openclaw":
     executableAlias = "openclaw",
     launcher = "node",
     closureManifest = "closures/openclaw-darwin-arm64.manifest",
+    env = "OPENCLAW_NO_AUTO_UPDATE=1",
     packageId = "openclaw@" & OpenClawVersion,
     cpu = "aarch64",
     os = "macos",
@@ -187,6 +192,7 @@ provisioningFor "openclaw":
     executableAlias = "openclaw",
     launcher = "node",
     closureManifest = "closures/openclaw-darwin-x64.manifest",
+    env = "OPENCLAW_NO_AUTO_UPDATE=1",
     packageId = "openclaw@" & OpenClawVersion,
     cpu = "x86_64",
     os = "macos",
@@ -201,6 +207,7 @@ provisioningFor "openclaw":
     executableAlias = "openclaw",
     launcher = "node",
     closureManifest = "closures/openclaw-linux-x64.manifest",
+    env = "OPENCLAW_NO_AUTO_UPDATE=1",
     packageId = "openclaw@" & OpenClawVersion,
     cpu = "x86_64",
     os = "linux",
@@ -215,6 +222,7 @@ provisioningFor "openclaw":
     executableAlias = "openclaw",
     launcher = "node",
     closureManifest = "closures/openclaw-linux-arm64.manifest",
+    env = "OPENCLAW_NO_AUTO_UPDATE=1",
     packageId = "openclaw@" & OpenClawVersion,
     cpu = "aarch64",
     os = "linux",

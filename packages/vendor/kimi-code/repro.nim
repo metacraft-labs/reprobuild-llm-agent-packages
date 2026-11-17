@@ -77,17 +77,15 @@
 ## have happen. Upstream's off switch is the environment variable
 ## ``KIMI_CODE_NO_AUTO_UPDATE=1`` (legacy alias ``KIMI_CLI_NO_AUTO_UPDATE``),
 ## which "fully disables the update preflight: no check, background install,
-## or prompt"; ``KIMI_DISABLE_TELEMETRY=1`` turns telemetry off. The
-## ``tarball`` record has no field that sets an environment variable or wraps
-## the executable, so THIS RECIPE DOES NOT DISABLE AUTO-UPDATE. The consumer
-## must export ``KIMI_CODE_NO_AUTO_UPDATE=1`` (numtide's wrapper does the same)
-## or write ``auto_install = false`` into ``tui.toml``. That is a gap in the
-## record kinds, not something the recipe has solved. The realized prefix is a
-## sealed store path, so an in-place self-update would fail to write rather
-## than succeed silently, but it would still try.
-##
-## The interface fingerprint below is a placeholder until the catalog
-## manager computes it.
+## or prompt"; ``KIMI_DISABLE_TELEMETRY=1`` turns telemetry off.
+## Each slice therefore declares ``env = "KIMI_CODE_NO_AUTO_UPDATE=1"``, which the
+## ``tarball`` record exports as an environment binding of the activated home
+## environment. LIMIT: it is a binding, not a wrapper, so a ``kimi`` started from
+## a shell that did not activate the realized environment still checks for
+## updates; ``auto_install = false`` in ``tui.toml`` is the other off switch. The
+## realized prefix is a sealed store path, so an in-place self-update would fail
+## to write rather than succeed silently. Telemetry (``KIMI_DISABLE_TELEMETRY=1``)
+## is a privacy choice, not store integrity, and is left to the consumer.
 
 import repro_project_dsl
 
@@ -106,6 +104,7 @@ provisioningFor "kimi-code":
     sha256 = "a138b9854236c2b97f8bd6f28f93dd756f720383177e5cf0f95810b2872bab43",
     archiveType = "tar.gz",
     executablePath = "kimi",
+    env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
     cpu = "x86_64",
     os = "linux",
@@ -116,6 +115,7 @@ provisioningFor "kimi-code":
     sha256 = "f3da3f2268683260fe39ceaf37aacd973e56b7e42f41858ff113ed06789f493a",
     archiveType = "tar.gz",
     executablePath = "kimi",
+    env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
     cpu = "aarch64",
     os = "linux",
@@ -126,6 +126,7 @@ provisioningFor "kimi-code":
     sha256 = "2f65c94f666b02641a20d305d84a3f5513938bf21d4884c82f9e479ffebccc00",
     archiveType = "tar.gz",
     executablePath = "kimi",
+    env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
     cpu = "aarch64",
     os = "macos",
@@ -136,6 +137,7 @@ provisioningFor "kimi-code":
     sha256 = "b8ba43a0bd3e6eded9ef8bfd8f7088f509d076b1da45a75eaa6997c0f1683471",
     archiveType = "tar.gz",
     executablePath = "kimi",
+    env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
     cpu = "x86_64",
     os = "macos",
@@ -146,6 +148,7 @@ provisioningFor "kimi-code":
     sha256 = "10572ae83bdff33316e9f8ab6fd2a73a9e72b713a5b75764d19c361170879018",
     archiveType = "tar.gz",
     executablePath = "kimi.exe",
+    env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
     cpu = "x86_64",
     os = "windows",
@@ -156,6 +159,7 @@ provisioningFor "kimi-code":
     sha256 = "f32426d24320a91a9a649dfbe4829fae52b24b7349ed75285214b39f7884c99a",
     archiveType = "tar.gz",
     executablePath = "kimi.exe",
+    env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
     cpu = "aarch64",
     os = "windows",

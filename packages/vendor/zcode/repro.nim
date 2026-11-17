@@ -60,12 +60,12 @@
 ##   (string present, 4 hits each) and matches the numtide lead; I could
 ##   NOT run ``codesign`` / ``spctl`` here (Linux host), so signature and
 ##   notarization are unverified, and realization re-checks them on a Mac.
-##   LIMIT: ``executablePath`` is ``ZCode.app/Contents/MacOS/ZCode``, so the
-##   realized command is ``ZCode``, not ``zcode``. An ``executableAlias`` copy
-##   out of the bundle would break the app and, on a case-insensitive
-##   filesystem, collide with the real name, so none is declared; the
-##   interface member ``zcode`` is therefore provided on macOS only through
-##   case-insensitive lookup of ``ZCode``, which this record cannot guarantee.
+##   ``executablePath`` is ``ZCode.app/Contents/MacOS/ZCode``. An application
+##   package's home launcher is named after the package and runs
+##   ``executablePath`` (Store-And-Installation-Layout.md § macOS Application
+##   Bundles, "Command line"), so the command ``zcode`` exists on macOS without
+##   an ``executableAlias`` (a copy out of the bundle would break the app). Not
+##   run here: no home apply was made on a Mac.
 ## * **Windows** is NOT realized: upstream ships only an NSIS installer
 ##   (``ZCode-<v>-win-<cpu>.exe``) and I did not verify an installer-nsis
 ##   realization. That is a gap, not a decision that none is possible.
