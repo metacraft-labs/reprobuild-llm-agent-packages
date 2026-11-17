@@ -31,6 +31,15 @@ import "../packages/interfaces/copilot/repro" as copilotInterface
 import "../packages/interfaces/codex-acp/repro" as codexAcpInterface
 import "../packages/interfaces/claude-code-acp/repro" as claudeCodeAcpInterface
 import "../packages/interfaces/amp/repro" as ampInterface
+import "../packages/interfaces/grok/repro" as grokInterface
+import "../packages/interfaces/hermes-agent/repro" as hermesAgentInterface
+import "../packages/interfaces/hermes-desktop/repro" as hermesDesktopInterface
+import "../packages/interfaces/kimi-code/repro" as kimiCodeInterface
+import "../packages/interfaces/minimax-code/repro" as minimaxCodeInterface
+import "../packages/interfaces/muse-code/repro" as museCodeInterface
+import "../packages/interfaces/openclaw/repro" as openclawInterface
+import "../packages/interfaces/pi/repro" as piInterface
+import "../packages/interfaces/zcode/repro" as zcodeInterface
 
 import "../packages/vendor/claude-code/repro" as claudeCodeVendor
 import "../packages/vendor/codex/repro" as codexVendor
@@ -42,12 +51,22 @@ import "../packages/vendor/gemini-cli/repro" as geminiCliVendor
 import "../packages/vendor/qwen-code/repro" as qwenCodeVendor
 import "../packages/vendor/claude-code-acp/repro" as claudeCodeAcpVendor
 import "../packages/vendor/amp/repro" as ampVendor
+import "../packages/vendor/grok/repro" as grokVendor
+import "../packages/vendor/hermes-desktop/repro" as hermesDesktopVendor
+import "../packages/vendor/kimi-code/repro" as kimiCodeVendor
+import "../packages/vendor/muse-code/repro" as museCodeVendor
+import "../packages/vendor/openclaw/repro" as openclawVendor
+import "../packages/vendor/pi/repro" as piVendor
+import "../packages/vendor/zcode/repro" as zcodeVendor
 
 import ../tools/coverage_report as coverage
 
 const PublishedInterfaces = [
-  "amp", "claude-code", "claude-code-acp", "codex", "codex-acp", "copilot",
-  "gemini-cli", "goose", "opencode", "qwen-code"]
+  "amp", "claude-code", "claude-code-acp", "codex",
+  "codex-acp", "copilot", "gemini-cli", "goose",
+  "grok", "hermes-agent", "hermes-desktop", "kimi-code",
+  "minimax-code", "muse-code", "openclaw", "opencode",
+  "pi", "qwen-code", "zcode"]
 
 suite "LLM agent catalog":
   test "each published interface is registered exactly once":
@@ -313,7 +332,10 @@ suite "the upstream inventory and the catalog agree":
         continue
       checkpoint(entry.name)
       check entry.realization_blocked.strip().len > 0
-      check entry.realization_blocked.contains("npm")
+      # Names the channel that cannot be provisioned. `npm` was the only
+      # one until a Python agent (hermes-agent, PyPI wheels) joined.
+      check entry.realization_blocked.contains("npm") or
+        entry.realization_blocked.contains("PyPI")
 
   test "the report renders every row it was given":
     let report = coverage.renderReport(inv)
@@ -407,6 +429,16 @@ suite "non-redistributable payloads cannot reach a shared cache":
     # rather than catalog-wide: publishing what we ARE entitled to publish is
     # the point of a shared cache, and a blanket refusal would cost every
     # other consumer the substitution.
+    #
+    # One named exception: `hermes-desktop` is MIT source, but what its
+    # slice realizes is upstream's 1.5 GB prebuilt bundle (Electron, CPython,
+    # Node and a wheel closure), whose third-party licences nobody has
+    # audited at this version. "Licence verified at the pinned version" is
+    # the catalog's rule, so an unverified aggregate stays unpublishable
+    # until it is audited. The exception is checked from both sides: a
+    # member must still carry the flag (so the list cannot go stale), and
+    # nothing else may.
+    const UnauditedBundles = ["hermes-desktop"]
     var publishable = initHashSet[string]()
     for entry in inv.agent:
       if entry.provenance_class == "source-available":
@@ -417,7 +449,10 @@ suite "non-redistributable payloads cannot reach a shared cache":
       for slice in contribution.tarballProvisioning:
         checkpoint(contribution.targetPackage & " " & slice.os & "-" &
           slice.cpu)
-        check not slice.nonRedistributable
+        if contribution.targetPackage in UnauditedBundles:
+          check slice.nonRedistributable
+        else:
+          check not slice.nonRedistributable
 
   test "the flag survives the artifact a consumer actually reads":
     # A consumer sees a contributed provisioning only through the interface
@@ -464,8 +499,9 @@ suite "non-redistributable payloads cannot reach a shared cache":
         # The name the launcher takes travels with it; without the alias
         # there is nothing to write the pair under.
         check slice.executableAlias.len > 0
-    check launched.len == 4
+    check launched.len == 5
     check "gemini-cli" in launched
     check "qwen-code" in launched
     check "claude-code-acp" in launched
     check "amp" in launched
+    check "openclaw" in launched
