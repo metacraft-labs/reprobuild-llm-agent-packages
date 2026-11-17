@@ -79,8 +79,9 @@
 ## ``PI_SELF_UPDATE_COMMAND`` to redirect what ``pi update`` runs. The
 ## each slice therefore declares ``env = "PI_SKIP_VERSION_CHECK=1"`` and
 ## ``env = "PI_TELEMETRY=0"``, exported by the ``tarball`` record as bindings of
-## the activated home environment. LIMIT: bindings, not a wrapper, so a ``pi``
-## started outside an activated shell is not covered. Per upstream's changelog the
+## bindings written by ``repro home apply`` as a persistent user environment variable (a managed block in the shell rc file on POSIX, the user registry on Windows). LIMIT: variables, not a wrapper, and only home apply
+## writes them, so a ``pi`` started by something that does not read that rc file
+## (a GUI launcher, cron) or from a ``uses:`` dev environment is not covered. Per upstream's changelog the
 ## check disables "new version notifications", and ``pi update`` runs only when
 ## the user invokes it, so no unprompted rewrite of the prefix was found; a user
 ## who runs ``pi update`` would still try.

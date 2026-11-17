@@ -110,8 +110,9 @@
 ##   the config and ``OPENCLAW_NO_AUTO_UPDATE=1`` in the environment, which
 ##   also stops automatic applies. Each slice declares
 ##   ``env = "OPENCLAW_NO_AUTO_UPDATE=1"``, exported by the ``tarball`` record as
-##   a binding of the activated home environment (not a wrapper: a process
-##   started outside an activated shell is not covered). ``update.checkOnStart``
+##   a binding written by ``repro home apply`` as a persistent user environment variable (a managed block in the shell rc file on POSIX, the user registry on Windows)
+##   (not a wrapper, and only home apply writes it: a process that does not
+##   read that rc file, or a ``uses:`` dev environment, is not covered). ``update.checkOnStart``
 ##   is a config field the record kinds cannot set, so the daily check itself is
 ##   not disabled.
 ##   ``openclaw update`` remains an explicit user command that would try to

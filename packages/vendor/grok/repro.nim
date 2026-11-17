@@ -71,10 +71,11 @@
 ## and the binary contains the literal ``GROK_DISABLE_AUTOUPDATER`` (string
 ## inspection only; I did not run it). Each slice below sets
 ## ``env = "GROK_DISABLE_AUTOUPDATER=1"``, which the tarball record exports as
-## an environment binding of the activated home environment. LIMITS the
-## record kinds impose: that is an exported variable, not a wrapper, so a
-## ``grok`` run from a shell that did not activate the realized environment is
-## not covered; and there is no field to inject ``--no-auto-update`` into
+## a binding written by ``repro home apply`` as a persistent user environment variable (a managed block in the shell rc file on POSIX, the user registry on Windows). LIMITS the
+## record kinds impose: that is a variable, not a wrapper, and only home apply
+## writes it, so a ``grok`` started by something that does not read that rc
+## file (a GUI launcher, cron) or from a ``uses:`` dev environment is not
+## covered; and there is no field to inject ``--no-auto-update`` into
 ## argv. Whether the variable alone suppresses every update path is
 ## unverified (I did not execute the binary).
 ##

@@ -69,9 +69,10 @@
 ## The launcher is not part of this payload, so I could not establish
 ## whether the bare binary has an update path of its own (it mentions
 ## "auto-update" in strings; unverified). Each slice sets
-## ``env = "MUSE_NO_AUTO_UPDATE=1"``, exported as an environment binding of
-## the activated home environment: it covers the launcher if a user runs one
-## from that environment, and is harmless otherwise. The record kinds have no
+## ``env = "MUSE_NO_AUTO_UPDATE=1"``, turned by ``repro home apply`` into a
+## persistent user environment variable (a managed block in the shell rc file
+## on POSIX, the user registry on Windows): it covers the launcher when a
+## process reads that environment, and is harmless otherwise. The record kinds have no
 ## wrapper or argv field to do more.
 ##
 ## ## Cache policy

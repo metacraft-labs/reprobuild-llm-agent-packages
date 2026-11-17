@@ -79,9 +79,9 @@
 ## which "fully disables the update preflight: no check, background install,
 ## or prompt"; ``KIMI_DISABLE_TELEMETRY=1`` turns telemetry off.
 ## Each slice therefore declares ``env = "KIMI_CODE_NO_AUTO_UPDATE=1"``, which the
-## ``tarball`` record exports as an environment binding of the activated home
-## environment. LIMIT: it is a binding, not a wrapper, so a ``kimi`` started from
-## a shell that did not activate the realized environment still checks for
+## ``tarball`` record turns into a binding written by ``repro home apply`` as a persistent user environment variable (a managed block in the shell rc file on POSIX, the user registry on Windows). LIMIT: a variable, not a wrapper, and only home apply
+## writes it, so a ``kimi`` started by something that does not read that rc file
+## (a GUI launcher, cron) or from a ``uses:`` dev environment still checks for
 ## updates; ``auto_install = false`` in ``tui.toml`` is the other off switch. The
 ## realized prefix is a sealed store path, so an in-place self-update would fail
 ## to write rather than succeed silently. Telemetry (``KIMI_DISABLE_TELEMETRY=1``)

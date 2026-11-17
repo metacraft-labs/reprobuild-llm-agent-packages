@@ -331,8 +331,11 @@ suite "LLM agent catalog":
         else: "linux"
       let npmCpu = if slice.cpu == "x86_64": "x64" else: "arm64"
       check slice.closureManifest.contains(npmOs & "-" & npmCpu)
-      check text.contains("-" & npmOs & "-" & npmCpu) or
-        text.contains("-" & npmOs & "-" & npmCpu & "-")
+      check text.contains("-" & npmOs & "-" & npmCpu)
+      # Nor the other CPU's on this OS: a darwin-x64 entry inside the
+      # darwin-arm64 closure would run on one Mac and not the other.
+      let otherCpu = if npmCpu == "x64": "arm64" else: "x64"
+      check not text.contains("-" & npmOs & "-" & otherCpu)
       # A closure never carries another OS's native esbuild.
       for other in ["win32", "darwin", "linux"]:
         if other != npmOs:
