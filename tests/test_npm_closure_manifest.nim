@@ -146,9 +146,9 @@ suite "npm runtime closure of one package (closureOf)":
     check ("node_modules/express/node_modules/content-type",
       "https://r/content-type-1.tgz") in urls
 
-  test "a linux slice keeps every libc variant and drops other platforms":
-    # A reprobuild linux slice is chosen by os and cpu only, and serves glibc
-    # and musl hosts alike; the package's loader picks the build that fits.
+  test "a linux slice drops other platforms and (for now) keeps every libc variant":
+    # Current behaviour, not yet a decided rule: whether libc should filter
+    # is an open owner decision in the reprobuild-pm issue named above.
     let paths = closureOf(agentLock(bundled = false), "agent", "linux-x64").mapIt(it.path)
     check "node_modules/@n/bin-linux-x64-gnu" in paths
     check "node_modules/@n/bin-linux-x64-musl" in paths
@@ -198,3 +198,35 @@ suite "npm runtime closure of one package (closureOf)":
       "linux-x64", buildClosure = false)
     check header[0] == "# Runtime dependency closure of agent@1.0.0."
     check "#   npm install agent@1.0.0 --package-lock-only (npm 10.9.3)" in header
+
+  test "a bundled member's own non-bundled dependency is in the closure":
+    var lock = agentLock()
+    lock["node_modules/agent/node_modules/playwright-core"]["dependencies"] =
+      %*{"outside": "1"}
+    lock["node_modules/outside"] = %*{
+      "version": "1.0.0", "resolved": "https://r/outside-1.tgz",
+      "integrity": "sha512-o"}
+    let paths = closureOf(lock, "agent", "linux-x64").mapIt(it.path)
+    check "node_modules/outside" in paths
+
+  test "a platform-constrained bundled member does not force --platform":
+    let lock = parseJson("""{
+      "node_modules/r": {"version": "1.0.0", "resolved": "https://r/r.tgz",
+        "bundleDependencies": ["bb"], "dependencies": {"bb": "1", "d": "1"}},
+      "node_modules/r/node_modules/bb": {"inBundle": true, "os": ["linux"]},
+      "node_modules/d": {"version": "1", "resolved": "https://r/d.tgz"}}""")
+    check closureOf(lock, "r", "").mapIt(it.path) == @["node_modules/d"]
+
+  test "a deep root with a member in a scope between it and the top is refused":
+    # In the prefix the root sits at the top, so node_modules/a/node_modules/x
+    # has no position b would find it at.
+    let lock = parseJson("""{
+      "node_modules/a": {"version": "1", "resolved": "https://r/a.tgz"},
+      "node_modules/a/node_modules/b": {"version": "1",
+        "resolved": "https://r/b.tgz", "dependencies": {"x": "1"}},
+      "node_modules/a/node_modules/x": {"version": "1",
+        "resolved": "https://r/x-1.tgz"},
+      "node_modules/x": {"version": "2", "resolved": "https://r/x-2.tgz"}}""")
+    expect ClosureError:
+      discard closureOf(lock, "node_modules/a/node_modules/b", "")
+    check rootLabel(lock, "node_modules/a/node_modules/b") == "b@1"

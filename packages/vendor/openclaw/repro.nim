@@ -70,13 +70,12 @@
 ##   closure for .". The ``--root`` walk now takes both (reprobuild-pm issue
 ##   2026-11-17-npm-closure-manifest-tool-cannot-take-a-root-with-bundled-
 ##   dependencies-and-ignores-libc), so the next regeneration is
-##   ``just closure-manifest`` with ``root=openclaw``, ``platform=`` and
-##   ``source=``, and no reduced lock.
+##   ``just closure-manifest <lock> openclaw <out> <npm-os>-<npm-cpu>
+##   "<source>"`` on the unreduced lock.
 ## * The tool does not filter on ``libc``, so the linux slices carry both the
-##   ``-gnu`` and ``-musl`` builds of each native add-on. That is the
-##   specified behaviour, not a gap: a reprobuild slice is chosen by os and
-##   cpu only and serves glibc and musl hosts alike, and the loader picks the
-##   build that fits. Only size is affected.
+##   ``-gnu`` and ``-musl`` builds of each native add-on. The loader picks
+##   the one that fits, so only size is affected here. Whether libc should
+##   be filtered is an open owner decision in that same issue.
 ##
 ## Verified on linux x86_64 only (2026-11-17): the root tarball plus the
 ## linux-x64 manifest, each archive checked against its manifest sha256 and
