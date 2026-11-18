@@ -230,3 +230,49 @@ suite "npm runtime closure of one package (closureOf)":
     expect ClosureError:
       discard closureOf(lock, "node_modules/a/node_modules/b", "")
     check rootLabel(lock, "node_modules/a/node_modules/b") == "b@1"
+
+  test "a hoisted member on the root's bundled path at another version is refused":
+    # The root's bundled node_modules/x unpacks at prefix/node_modules/x,
+    # exactly where the hoisted x@2 that y needs would go.
+    let lock = parseJson("""{
+      "node_modules/a": {"version": "1", "resolved": "https://r/a.tgz",
+        "bundleDependencies": ["x"], "dependencies": {"x": "1", "y": "1"}},
+      "node_modules/a/node_modules/x": {"version": "1.0.0", "inBundle": true},
+      "node_modules/y": {"version": "1", "resolved": "https://r/y.tgz",
+        "dependencies": {"x": "2"}},
+      "node_modules/x": {"version": "2.0.0", "resolved": "https://r/x-2.tgz"}}""")
+    expect ClosureError:
+      discard closureOf(lock, "a", "")
+    # The same version on both paths unpacks identical contents (openclaw's
+    # bundled debug, fast-deep-equal and ms): kept.
+    var same = lock.copy()
+    same["node_modules/x"]["version"] = %"1.0.0"
+    check closureOf(same, "a", "").mapIt(it.path) ==
+      @["node_modules/x", "node_modules/y"]
+
+  test "a member that requires the root by name is refused":
+    # Nothing sits at node_modules/<root> in the prefix, so the plugin's
+    # require of its host (or a cycle back to the root) would fail.
+    let peer = parseJson("""{
+      "node_modules/a": {"version": "1", "resolved": "https://r/a.tgz",
+        "dependencies": {"plug": "1"}},
+      "node_modules/plug": {"version": "1", "resolved": "https://r/p.tgz",
+        "peerDependencies": {"a": "1"}}}""")
+    expect ClosureError:
+      discard closureOf(peer, "a", "")
+    let cycle = parseJson("""{
+      "node_modules/a": {"version": "1", "resolved": "https://r/a.tgz",
+        "dependencies": {"b": "1"}},
+      "node_modules/b": {"version": "1", "resolved": "https://r/b.tgz",
+        "dependencies": {"a": "1"}}}""")
+    expect ClosureError:
+      discard closureOf(cycle, "a", "")
+
+  test "a platform-constrained bundled member is kept for any --platform":
+    let lock = parseJson("""{
+      "node_modules/r": {"version": "1.0.0", "resolved": "https://r/r.tgz",
+        "bundleDependencies": ["bb"], "dependencies": {"bb": "1", "d": "1"}},
+      "node_modules/r/node_modules/bb": {"inBundle": true, "os": ["linux"]},
+      "node_modules/d": {"version": "1", "resolved": "https://r/d.tgz"}}""")
+    check closureOf(lock, "r", "darwin-arm64").mapIt(it.path) ==
+      @["node_modules/d"]

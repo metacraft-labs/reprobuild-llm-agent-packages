@@ -20,9 +20,10 @@
 ##
 ## Usage::
 ##
-##   just closure-manifest <lock> <root> <out> [<npm-os>-<npm-cpu>] <source>
+##   just closure-manifest <lock> <root> <out> <npm-os>-<npm-cpu> <source>
 ##
-## (positional: just does not take ``name=value`` arguments). For example
+## (positional: just does not take ``name=value`` arguments; pass ``""`` as
+## the platform for a closure without platform-specific members). For example
 ## ``just closure-manifest ../agent-harbor/scripts/agent-tools/package-lock.json
 ## @zed-industries/claude-code-acp
 ## packages/vendor/claude-code-acp/closures/claude-code-acp-linux-x64.manifest
@@ -155,7 +156,10 @@ proc closureOf*(packages: JsonNode; root, platform: string):
   ##   npm nested under the dependent that needs it is the one taken, beside
   ##   the hoisted one;
   ## * an entry npm marks ``inBundle`` ships inside its dependent's archive
-  ##   (``bundleDependencies``) and is not an entry of its own;
+  ##   (``bundleDependencies``) and is not an entry of its own, whatever
+  ##   its os/cpu say;
+  ## * a member that requires the root by name is refused: the root is at
+  ##   the top of the prefix, not at a ``node_modules`` position;
   ## * an optional dependency the lock does not carry, or whose os/cpu
   ##   excludes the platform, is skipped as npm skips it; a required one is
   ##   refused.
@@ -163,13 +167,15 @@ proc closureOf*(packages: JsonNode; root, platform: string):
   ## Each entry's ``path`` is where it lands relative to the realized
   ## prefix, which holds the root's own archive: a member nested under the
   ## root moves up by the root's key, a hoisted one stays where npm put it,
-  ## and two members that would land on one path are refused.
+  ## and two members that would land on one path are refused, as is a
+  ## member landing on a bundled member's path at a different version.
   let rootAt = rootKey(root)
   if not packages.hasKey(rootAt):
     fail("not in the lock file: " & rootAt)
   var seen = initHashSet[string]()
   var stack = @[rootAt]
   var members: seq[(string, JsonNode)] = @[]
+  var bundled: seq[(string, JsonNode)] = @[]
   var platformSpecific: seq[string] = @[]
   while stack.len > 0:
     let key = stack.pop()
@@ -184,8 +190,9 @@ proc closureOf*(packages: JsonNode; root, platform: string):
       if entry{"inBundle"}.getBool(false):
         # Inside its dependent's archive: not an entry, and not a reason to
         # need --platform. Its own dependencies are still followed below:
-        # one that is not bundled too must come from the closure.
-        discard
+        # one that is not bundled too must come from the closure. Its path
+        # is still occupied, which the collision check below needs.
+        bundled.add((key, entry))
       else:
         if entry.constrained:
           platformSpecific.add(key)
@@ -200,6 +207,21 @@ proc closureOf*(packages: JsonNode; root, platform: string):
           return
         fail(key & " depends on " & name & ", which the lock file does " &
           "not carry anywhere npm would look for it")
+      if target == rootAt:
+        # The root's archive is unpacked at the TOP of the prefix, so
+        # nothing sits at node_modules/<root> for a member that requires the
+        # root by name (a plugin's peer dependency on its host, a cycle).
+        # Dropping the edge would ship a member whose require fails at run
+        # time, so it is refused.
+        fail(key & " requires the root " & rootAt & " by name, but the " &
+          "root sits at the top of the prefix, not at a node_modules " &
+          "position " & key & " would find it at")
+      if packages[target]{"inBundle"}.getBool(false):
+        # A bundled member ships inside its dependent's archive whatever the
+        # platform, so its os/cpu cannot exclude it; checking them would
+        # refuse a manifest the no-platform run accepts.
+        stack.add(target)
+        return
       if not packages[target].admits(platform):
         if optional:
           return
@@ -229,6 +251,16 @@ proc closureOf*(packages: JsonNode; root, platform: string):
   while scope.len > 0:
     between.add(scope)
     scope = parentScope(scope)
+  proc landsAt(key: string): string =
+    if key.startsWith(rootAt & "/"): key[rootAt.len + 1 .. ^1] else: key
+  # A bundled member occupies its path too: the root's own bundled
+  # node_modules/x is at the same prefix path as a hoisted node_modules/x.
+  # The two may coincide only when they are the same version, so the
+  # hoisted archive unpacks over identical contents; otherwise the root
+  # would run with the hoisted version instead of its bundled one.
+  var bundledAt = initTable[string, (string, string)]()
+  for (key, entry) in bundled:
+    bundledAt[landsAt(key)] = (key, entry{"version"}.getStr(""))
   var taken = initTable[string, string]()
   for (key, entry) in members:
     if not key.startsWith(rootAt & "/"):
@@ -238,9 +270,13 @@ proc closureOf*(packages: JsonNode; root, platform: string):
             "and " & rootAt & "; no prefix layout keeps it where " & rootAt &
             " finds it. Take the closure from a lock rooted nearer the " &
             "package (npm install <pkg> --package-lock-only)")
-    let path =
-      if key.startsWith(rootAt & "/"): key[rootAt.len + 1 .. ^1]
-      else: key
+    let path = landsAt(key)
+    if bundledAt.hasKey(path):
+      let (bundledKey, bundledVersion) = bundledAt[path]
+      let version = entry{"version"}.getStr("")
+      if bundledVersion.len == 0 or bundledVersion != version:
+        fail(key & " (" & version & ") lands on " & path & ", where the " &
+          "bundled " & bundledKey & " (" & bundledVersion & ") already is")
     if taken.hasKey(path):
       fail("two closure members land on " & path & ": " & taken[path] &
         " and " & key)
