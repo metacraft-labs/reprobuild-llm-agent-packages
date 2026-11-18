@@ -1,8 +1,8 @@
-## The npm BUILD closure — `installClosure` in `tools/npm_closure_manifest`.
+## The two closures `tools/npm_closure_manifest` writes.
 ##
-## `closureOf` (already covered by use: it generates the committed runtime
-## closures of the vendored npm agents) walks ONE package's runtime
-## dependencies. A from-source agent build needs the opposite: the whole
+## `closureOf` walks ONE package's runtime dependencies the way npm resolves
+## a `require`; its suite is at the end. A from-source agent build needs the
+## opposite, `installClosure`: the whole
 ## `npm ci` install — dev dependencies that do the building, and every
 ## workspace's dependencies — which a lockfileVersion 2/3 lock has already
 ## resolved into its `packages` map. `installClosure` is every installed
@@ -71,3 +71,130 @@ suite "npm build closure (installClosure)":
 
   test "an empty packages map yields an empty closure, not an error":
     check installClosure(parseJson("{}")).len == 0
+
+suite "npm runtime closure of one package (closureOf)":
+  ## The `--root` form. Its contract (reprobuild-pm
+  ## spec/From-Source-Build-Recipes.md, "npm runtime closures") is the closure
+  ## `npm install --omit=dev` would install for the root, at the positions npm
+  ## would use. These cases are shaped on the `openclaw` lock that the first
+  ## version of this walk could not take (reprobuild-pm issue
+  ## 2026-11-17-npm-closure-manifest-tool-cannot-take-a-root-with-bundled-
+  ## dependencies-and-ignores-libc): a root with `bundleDependencies`, and a
+  ## dependency whose required version is nested under its dependent because
+  ## a different one is hoisted.
+
+  proc agentLock(bundled = true): JsonNode =
+    ## `bundled = false` drops the bundled member, so a case about nesting
+    ## or platforms does not also depend on bundle handling.
+    result = parseJson("""
+    {
+      "": {"name": "scratch", "dependencies": {"agent": "1"}},
+      "node_modules/agent": {
+        "version": "1.0.0", "resolved": "https://r/agent-1.tgz",
+        "integrity": "sha512-a",
+        "bundleDependencies": ["playwright-core"],
+        "dependencies": {"playwright-core": "1", "express": "4",
+                         "content-type": "2"},
+        "optionalDependencies": {"@n/bin-linux-x64-gnu": "1",
+                                 "@n/bin-linux-x64-musl": "1",
+                                 "@n/bin-darwin-arm64": "1"}
+      },
+      "node_modules/agent/node_modules/playwright-core": {
+        "version": "1.56.1", "inBundle": true},
+      "node_modules/express": {
+        "version": "4.0.0", "resolved": "https://r/express-4.tgz",
+        "integrity": "sha512-e", "dependencies": {"content-type": "1"}},
+      "node_modules/express/node_modules/content-type": {
+        "version": "1.0.5", "resolved": "https://r/content-type-1.tgz",
+        "integrity": "sha512-c1"},
+      "node_modules/content-type": {
+        "version": "2.0.0", "resolved": "https://r/content-type-2.tgz",
+        "integrity": "sha512-c2"},
+      "node_modules/@n/bin-linux-x64-gnu": {
+        "version": "1.0.0", "resolved": "https://r/bin-gnu.tgz",
+        "integrity": "sha512-g", "optional": true,
+        "os": ["linux"], "cpu": ["x64"], "libc": ["glibc"]},
+      "node_modules/@n/bin-linux-x64-musl": {
+        "version": "1.0.0", "resolved": "https://r/bin-musl.tgz",
+        "integrity": "sha512-m", "optional": true,
+        "os": ["linux"], "cpu": ["x64"], "libc": ["musl"]},
+      "node_modules/@n/bin-darwin-arm64": {
+        "version": "1.0.0", "resolved": "https://r/bin-darwin.tgz",
+        "integrity": "sha512-d", "optional": true,
+        "os": ["darwin"], "cpu": ["arm64"]}
+    }""")
+    if not bundled:
+      result["node_modules/agent"].delete("bundleDependencies")
+      result["node_modules/agent"]["dependencies"].delete("playwright-core")
+      result.delete("node_modules/agent/node_modules/playwright-core")
+
+  test "a root with bundleDependencies: the bundled member is not an entry":
+    # The first walk looked every name up at the top-level node_modules and
+    # stopped with "not in the lock file: playwright-core".
+    let paths = closureOf(agentLock(), "agent", "linux-x64").mapIt(it.path)
+    check "node_modules/playwright-core" notin paths
+    check "node_modules/agent/node_modules/playwright-core" notin paths
+    check "node_modules/express" in paths
+
+  test "a version nested under its dependent stays nested, beside the hoisted one":
+    # express needs content-type 1, nested under it; the root needs the
+    # hoisted 2. A flat walk took the hoisted one for both, silently.
+    let entries = closureOf(agentLock(bundled = false), "agent", "linux-x64")
+    var urls: seq[(string, string)] = @[]
+    for e in entries: urls.add((e.path, e.url))
+    check ("node_modules/content-type", "https://r/content-type-2.tgz") in urls
+    check ("node_modules/express/node_modules/content-type",
+      "https://r/content-type-1.tgz") in urls
+
+  test "a linux slice keeps every libc variant and drops other platforms":
+    # A reprobuild linux slice is chosen by os and cpu only, and serves glibc
+    # and musl hosts alike; the package's loader picks the build that fits.
+    let paths = closureOf(agentLock(bundled = false), "agent", "linux-x64").mapIt(it.path)
+    check "node_modules/@n/bin-linux-x64-gnu" in paths
+    check "node_modules/@n/bin-linux-x64-musl" in paths
+    check "node_modules/@n/bin-darwin-arm64" notin paths
+
+  test "a member nested under the root moves up into the prefix":
+    # A member npm nested under the root lands beside the root's archive.
+    var lock = agentLock(bundled = false)
+    lock["node_modules/agent"]["dependencies"]["ms"] = %"2"
+    lock["node_modules/agent/node_modules/ms"] = %*{
+      "version": "2.1.3", "resolved": "https://r/ms-2.tgz",
+      "integrity": "sha512-ms"}
+    let paths = closureOf(lock, "agent", "linux-x64").mapIt(it.path)
+    check "node_modules/ms" in paths
+    check "node_modules/agent/node_modules/ms" notin paths
+
+  test "two members landing on one prefix path are refused, not overwritten":
+    var lock = agentLock(bundled = false)
+    lock["node_modules/agent"]["dependencies"]["content-type"] = %"3"
+    lock["node_modules/agent/node_modules/content-type"] = %*{
+      "version": "3.0.0", "resolved": "https://r/content-type-3.tgz",
+      "integrity": "sha512-c3"}
+    # The root's nested 3 lands on node_modules/content-type, and so does
+    # the hoisted 2 that `body` (hoisted) requires.
+    lock["node_modules/agent"]["dependencies"]["body"] = %"1"
+    lock["node_modules/body"] = %*{
+      "version": "1.0.0", "resolved": "https://r/body-1.tgz",
+      "integrity": "sha512-b", "dependencies": {"content-type": "2"}}
+    expect ClosureError:
+      discard closureOf(lock, "agent", "linux-x64")
+
+  test "a platform-specific closure without --platform is refused":
+    expect ClosureError:
+      discard closureOf(agentLock(bundled = false), "agent", "")
+
+  test "a required dependency the lock does not carry is refused":
+    var lock = agentLock(bundled = false)
+    lock["node_modules/agent"]["dependencies"]["ghost"] = %"1"
+    expect ClosureError:
+      discard closureOf(lock, "agent", "linux-x64")
+
+  test "the header names the root and the lock's source, not a scratch path":
+    let packages = agentLock()
+    check rootLabel(packages, "agent") == "agent@1.0.0"
+    let header = manifestHeader(rootLabel(packages, "agent"),
+      "npm install agent@1.0.0 --package-lock-only (npm 10.9.3)",
+      "linux-x64", buildClosure = false)
+    check header[0] == "# Runtime dependency closure of agent@1.0.0."
+    check "#   npm install agent@1.0.0 --package-lock-only (npm 10.9.3)" in header

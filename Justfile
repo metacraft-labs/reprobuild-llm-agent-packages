@@ -28,11 +28,12 @@ coverage-check:
 #
 #   just closure-manifest #     lock=../agent-harbor/scripts/agent-tools/package-lock.json #     root=@zed-industries/claude-code-acp #     out=packages/vendor/claude-code-acp/closures/claude-code-acp.manifest
 #
-# Pass `platform=<npm-os>-<npm-cpu>` for a package whose native binary
-# arrives through npm's optional-dependency mechanism; that follows
-# optional deps and keeps only the entries the platform admits.
-closure-manifest lock root out platform="":
-  nim c -r --hints:off --warnings:off --nimcache:build/nimcache-closure --out:build/npm-closure-manifest tools/npm_closure_manifest.nim --lock={{lock}} --root={{root}} --out={{out}} {{ if platform == "" { "" } else { "--platform=" + platform } }}
+# Pass `platform=<npm-os>-<npm-cpu>` for a closure with platform-specific
+# members (native binaries through npm's optional dependencies); the tool
+# refuses such a closure without it. Every libc variant is kept. Pass
+# `source=<text>` to name where the lock came from in the manifest header.
+closure-manifest lock root out platform="" source="":
+  nim c -r --hints:off --warnings:off --nimcache:build/nimcache-closure --out:build/npm-closure-manifest tools/npm_closure_manifest.nim --lock={{lock}} --root={{root}} --out={{out}} {{ if platform == "" { "" } else { "--platform=" + platform } }} {{ if source == "" { "" } else { "--lock-source=" + quote(source) } }}
 
 # Regenerate `published-interfaces/` from the providers (commit the result);
 # `publish-check` is what CI runs: it fails when the directory is stale.

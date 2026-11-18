@@ -53,23 +53,30 @@
 ## ``tools/npm_closure_manifest.nim --build-closure``. 367 entries for the
 ## linux slices, 363 for macos and windows x86_64, 362 for windows arm64.
 ##
-## Two deviations from the amp recipe's route, both forced:
+## Two deviations from the amp recipe's route, forced by the tool as it was
+## when these manifests were written (2026-11-17):
 ##
-## * ``tools/npm_closure_manifest.nim --root=openclaw`` cannot be used. It
-##   resolves every dependency at the top-level ``node_modules/<name>`` and
-##   stops with "not in the lock file: playwright-core" on a root that has
-##   ``bundleDependencies``; and it has no notion of NESTED entries, of
+## * ``tools/npm_closure_manifest.nim --root=openclaw`` could not be used. It
+##   resolved every dependency at the top-level ``node_modules/<name>`` and
+##   stopped with "not in the lock file: playwright-core" on a root that has
+##   ``bundleDependencies``; and it had no notion of NESTED entries, of
 ##   which this lock has 23 (``node_modules/express/node_modules/content-type``
 ##   and others) where a dependency needs a different version than the one
-##   hoisted. A flat closure would have placed the wrong version silently.
-##   The ``--build-closure`` mode keeps the nested paths, so it was used on
-##   the lock reduced, per platform, to the entries npm would install there
-##   (same ``os``/``cpu`` rule as the tool's ``admits``; the root's own
-##   entry removed). The reduced lock is a scratch file named in each
-##   manifest's header; it is not committed.
+##   hoisted. The ``--build-closure`` mode keeps the nested paths, so it was
+##   used on the lock reduced, per platform, to the entries npm would install
+##   there (same ``os``/``cpu`` rule as the tool's ``admits``; the root's own
+##   entry removed). The reduced lock is a scratch file, which is why each
+##   manifest's header names ``lock-<platform>.json`` and reads "Dependency
+##   closure for .". The ``--root`` walk now takes both (reprobuild-pm issue
+##   2026-11-17-npm-closure-manifest-tool-cannot-take-a-root-with-bundled-
+##   dependencies-and-ignores-libc), so the next regeneration is
+##   ``just closure-manifest`` with ``root=openclaw``, ``platform=`` and
+##   ``source=``, and no reduced lock.
 ## * The tool does not filter on ``libc``, so the linux slices carry both the
-##   ``-gnu`` and ``-musl`` builds of each native add-on. Only size is
-##   affected: the loader picks the one that fits.
+##   ``-gnu`` and ``-musl`` builds of each native add-on. That is the
+##   specified behaviour, not a gap: a reprobuild slice is chosen by os and
+##   cpu only and serves glibc and musl hosts alike, and the loader picks the
+##   build that fits. Only size is affected.
 ##
 ## Verified on linux x86_64 only (2026-11-17): the root tarball plus the
 ## linux-x64 manifest, each archive checked against its manifest sha256 and
