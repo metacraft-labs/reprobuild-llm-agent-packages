@@ -124,9 +124,16 @@ proc loadInventory*(text: string): Inventory =
 proc loadInventoryFile*(): Inventory =
   loadInventory(readFile(inventoryPath()))
 
+const RealizationPackageSuffix* = "Realizations"
+  ## A realization module (`packages/vendor/<n>/`, `packages/source/<n>/`)
+  ## declares an empty package of this suffix so `repro catalog publish` can
+  ## extract it on its own: the package carries the module's contributions
+  ## into its artifact. It is not an agent, so it is not coverage.
+
 proc registeredPackageNames*(): HashSet[string] =
   for pkg in registeredPackages():
-    result.incl(pkg.packageName)
+    if not pkg.packageName.endsWith(RealizationPackageSuffix):
+      result.incl(pkg.packageName)
 
 proc hasRealization*(entry: AgentEntry): bool =
   "vendor" in entry.packaged or "source" in entry.packaged

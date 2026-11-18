@@ -175,3 +175,9 @@ provisioningFor "kimi-code":
     os = "windows",
     lockIdentity = "vendor-binary:kimi-code@" & KimiCodeVersion &
       ":windows-aarch64:sha256:f32426d24320a91a9a649dfbe4829fae52b24b7349ed75285214b39f7884c99a"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package kimiCodeRealizations:
+  discard

@@ -48,3 +48,9 @@ provisioningFor "qwen-code":
     packageId = "qwen-code@" & QwenCodeVersion,
     lockIdentity = "vendor-npm:qwen-code@" & QwenCodeVersion &
       ":sha256:" & QwenCodeSha256
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package qwenCodeRealizations:
+  discard

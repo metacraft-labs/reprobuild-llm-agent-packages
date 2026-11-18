@@ -56,3 +56,9 @@ provisioningFor "codex":
     os = "windows",
     lockIdentity = "vendor-binary:codex@" & CodexVersion &
       ":windows-aarch64:sha256:5da0e4b828d125bb72ecefc882bd068443625df32d56269e687afb7026b2a65d"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package codexRealizations:
+  discard

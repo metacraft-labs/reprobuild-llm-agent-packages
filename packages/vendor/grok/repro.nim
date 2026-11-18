@@ -172,3 +172,9 @@ provisioningFor "grok":
     os = "windows",
     lockIdentity = "vendor-binary:grok@" & GrokVersion &
       ":windows-aarch64:sha256:73fb2c790db7ef6749e82d7b2553ddd1ae3fb7d5ba9c710151c7e7355f69eb89"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package grokRealizations:
+  discard

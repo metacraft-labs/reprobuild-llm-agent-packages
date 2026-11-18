@@ -49,3 +49,9 @@ provisioningFor "copilot":
     os = "windows",
     lockIdentity = "vendor-binary:copilot@" & CopilotVersion &
       ":windows-aarch64:sha256:63f35c0ce1a5fdcc6f3e584890d689b1ede8f930933394aaf7b5e139b53d2cc1"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package copilotRealizations:
+  discard

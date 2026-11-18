@@ -33,3 +33,11 @@ coverage-check:
 # optional deps and keeps only the entries the platform admits.
 closure-manifest lock root out platform="":
   nim c -r --hints:off --warnings:off --nimcache:build/nimcache-closure --out:build/npm-closure-manifest tools/npm_closure_manifest.nim --lock={{lock}} --root={{root}} --out={{out}} {{ if platform == "" { "" } else { "--platform=" + platform } }}
+
+# Regenerate `published-interfaces/` from the providers (commit the result);
+# `publish-check` is what CI runs: it fails when the directory is stale.
+publish:
+  repro catalog publish
+
+publish-check:
+  repro catalog publish --check

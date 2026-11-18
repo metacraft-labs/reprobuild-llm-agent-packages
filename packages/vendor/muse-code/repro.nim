@@ -163,3 +163,9 @@ provisioningFor "muse-code":
     os = "windows",
     lockIdentity = "vendor-binary:muse-code@" & MuseCodeVersion &
       ":windows-aarch64:sha256:9ba30ff829ab43cf990f948bb2a36c4fd082cc481fe5ebb642df36e0e567cf84"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package museCodeRealizations:
+  discard

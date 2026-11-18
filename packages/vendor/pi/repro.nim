@@ -182,3 +182,9 @@ provisioningFor "pi":
     os = "windows",
     lockIdentity = "vendor-binary:pi@" & PiVersion &
       ":windows-aarch64:sha256:e83404bc5a6003ac950683edd9b6cf499dac91ec890d8439a8c32528de534a77"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package piRealizations:
+  discard

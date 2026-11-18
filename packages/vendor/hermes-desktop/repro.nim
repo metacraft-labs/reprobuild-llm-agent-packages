@@ -120,3 +120,9 @@ provisioningFor "hermes-desktop":
     os = "macos",
     lockIdentity = "vendor-binary:hermes-desktop@" & HermesDesktopVersion &
       ":macos-aarch64:sha256:" & HermesDesktopArm64Sha256
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package hermesDesktopRealizations:
+  discard

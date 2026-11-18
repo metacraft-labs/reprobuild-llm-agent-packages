@@ -71,3 +71,9 @@ provisioningFor "claude-code-acp":
     packageId = "claude-code-acp@" & ClaudeCodeAcpVersion,
     lockIdentity = "vendor-npm:claude-code-acp@" & ClaudeCodeAcpVersion &
       ":sha256:" & ClaudeCodeAcpSha256
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package claudeCodeAcpRealizations:
+  discard

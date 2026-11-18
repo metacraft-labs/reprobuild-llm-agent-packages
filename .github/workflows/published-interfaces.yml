@@ -1,0 +1,66 @@
+name: Published interfaces
+
+# `published-interfaces/` is generated from the providers under `packages/` by
+# `repro catalog publish` (Federated-Catalog-Imports.md § Publishing) and
+# committed, because a consumer reads a catalog only from its committed
+# objects. This job fails when the committed directory is not what publishing
+# the providers now writes: a provider or a closure manifest changed without
+# its republished artifacts.
+#
+# UNVALIDATED: written against the pattern of reprobuild's own workflows
+# (downstream-tests.yml) and not yet run. The verb it calls is measured by
+# reprobuild's tests/integration/t_catalog_publish_verb_deterministic.nim.
+# `agents` has no CI by policy; this runs on pull requests and on `dev`.
+
+on:
+  pull_request:
+  push:
+    branches: [dev]
+  workflow_dispatch:
+
+concurrency:
+  group: published-interfaces-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  current:
+    name: published-interfaces/ is current
+    runs-on: [self-hosted, linux, x64]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Mint installation token for the sibling repositories
+        id: ci_token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.CI_TOKEN_PROVIDER_APP_ID }}
+          private-key: ${{ secrets.CI_TOKEN_PROVIDER_PRIVATE_KEY }}
+          owner: metacraft-labs
+          permission-contents: read
+      - uses: metacraft-labs/metacraft-github-actions/setup-dev-env@dev
+        with:
+          env-flavor: nix
+          gh-token: ${{ steps.ci_token.outputs.token }}
+          substituters: ${{ vars.SUBSTITUTERS }}
+          trusted-public-keys: ${{ vars.TRUSTED_PUBLIC_KEYS }}
+      # The reprobuild that carries the publishing verb, and the siblings the
+      # catalog's config.nims puts on the compiler's path.
+      - name: Clone reprobuild at agents
+        uses: metacraft-labs/metacraft-github-actions/clone-repo@dev
+        with:
+          repo: metacraft-labs/reprobuild
+          ref: agents
+          path: ${{ github.workspace }}/../reprobuild
+          gh-token: ${{ steps.ci_token.outputs.token }}
+      - name: Clone nim-cli-spec
+        uses: metacraft-labs/metacraft-github-actions/clone-repo@dev
+        with:
+          repo: metacraft-labs/nim-cli-spec
+          ref: dev
+          path: ${{ github.workspace }}/../nim-cli-spec
+          gh-token: ${{ steps.ci_token.outputs.token }}
+      - name: Build repro
+        working-directory: ../reprobuild
+        run: dev-exec just build
+      - name: The committed published-interfaces/ is what publishing writes
+        run: ../reprobuild/build/bin/repro catalog publish --check

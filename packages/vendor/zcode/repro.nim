@@ -182,3 +182,9 @@ provisioningFor "zcode":
     os = "macos",
     lockIdentity = "vendor-binary:zcode@" & ZCodeVersion &
       ":macos-aarch64:sha256:b5af46c37aa423d3c7d435f41ec4997d50e4148f662117b6980e586be7172dd8"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package zcodeRealizations:
+  discard
