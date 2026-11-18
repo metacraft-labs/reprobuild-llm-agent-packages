@@ -350,6 +350,35 @@ suite "LLM agent catalog":
       encodeProjectInterfaceArtifact(artifact))
     check roundTrip.projectInterface.provisioningContributions.len == expected
 
+  test "a closure package's entries travel in the artifact a consumer reads":
+    # A consumer reads `published-interfaces/` and has no checkout, so the
+    # manifest FILE beside a provider is out of its reach: the record must
+    # carry the parsed entries (envelope v34; Federated-Catalog-Imports.md
+    # § Home profiles, option 1). Compared with the committed file through
+    # the codec, so a dropped, truncated or stale block goes red. Falsifying
+    # mutation: stop inlining in the lift -> every case here is red.
+    let artifact = artifactFromRegisteredDsl(
+      parentDir(getCurrentDir()) / "repro.nim")
+    let roundTrip = decodeProjectInterfaceArtifact(
+      encodeProjectInterfaceArtifact(artifact))
+    let repoRoot = parentDir(parentDir(currentSourcePath()))
+    var closures = 0
+    for contribution in roundTrip.projectInterface.provisioningContributions:
+      for slice in contribution.tarballProvisioning:
+        if slice.closureManifest.len == 0:
+          check slice.closureEntries.len == 0
+          continue
+        inc closures
+        let path = repoRoot / "packages" / "vendor" /
+          contribution.targetPackage / slice.closureManifest
+        checkpoint(path)
+        let fromFile = parseClosureManifestText(readFile(path), path)
+        check fromFile.len > 0
+        check slice.closureEntries == fromFile
+    # amp and claude-code-acp (one slice each or per platform) plus
+    # openclaw's six; a catalog that lost its closures would pass vacuously.
+    check closures >= 8
+
   test "the self-update bindings survive the artifact a consumer actually reads":
     # The recipe's `env` is the only isolation of a vendor agent's
     # self-update this catalog can express, and a consumer sees it only
@@ -512,26 +541,26 @@ suite "non-redistributable payloads cannot reach a shared cache":
     # the point of a shared cache, and a blanket refusal would cost every
     # other consumer the substitution.
     #
-    # One named exception: `hermes-desktop` is MIT source, but what its
-    # slice realizes is upstream's 1.5 GB prebuilt bundle (Electron, CPython,
-    # Node and a wheel closure), whose third-party licences nobody has
-    # audited at this version. "Licence verified at the pinned version" is
-    # the catalog's rule, so an unverified aggregate stays unpublishable
-    # until it is audited. The exception is checked from both sides: a
-    # member must still carry the flag (so the list cannot go stale), and
-    # nothing else may.
-    const UnauditedBundles = ["hermes-desktop"]
+    # What a source-available package's realization is decides it, and the
+    # inventory records that: `republication = "denied"` marks a realization
+    # whose payload is a prebuilt aggregate (AGENTS.md § Cache policy). The
+    # rule is one policy read from data, not a list in this test; the flag is
+    # checked from both sides, so a denial cannot go stale either way.
     var publishable = initHashSet[string]()
+    var denied = initHashSet[string]()
     for entry in inv.agent:
       if entry.provenance_class == "source-available":
         publishable.incl(entry.name)
+        if entry.republication == "denied":
+          denied.incl(entry.name)
+    check denied.len >= 3   # kimi-code, pi, hermes-desktop
     for contribution in registeredProvisioningContributions():
       if contribution.targetPackage notin publishable:
         continue
       for slice in contribution.tarballProvisioning:
         checkpoint(contribution.targetPackage & " " & slice.os & "-" &
           slice.cpu)
-        if contribution.targetPackage in UnauditedBundles:
+        if contribution.targetPackage in denied:
           check slice.nonRedistributable
         else:
           check not slice.nonRedistributable

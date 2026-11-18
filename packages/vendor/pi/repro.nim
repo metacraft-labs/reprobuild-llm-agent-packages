@@ -22,10 +22,14 @@
 ##   https://raw.githubusercontent.com/earendil-works/pi/v1.5.2/LICENSE -- is
 ##   the MIT licence, "Copyright (c) 2025 Mario Zechner". The binary embeds
 ##   its npm dependencies under their own licences, which this recipe has not
-##   audited. Because the licence permits redistribution these payloads do NOT
-##   set ``nonRedistributable`` (the catalog applies that to closed-source
-##   vendor binaries; goose and codex, MIT/Apache upstream builds, do not set
-##   it either).
+##   audited.
+##   This realization is the CONVENIENCE one: the primary realization of a
+##   source-available package is a from-source build, which does not exist
+##   yet (reprobuild-pm issue 2026-11-18-nine-agents-source-available-without-from-source-realization).
+##   Every slice sets ``nonRedistributable``: what is realized is a prebuilt
+##   aggregate whose bundled third-party dependencies this recipe has not
+##   audited, and AGENTS.md § Cache policy says a vendor-binary payload is
+##   never republished into a shared cache, whatever the upstream licence.
 ##
 ## ## What the archives are
 ##
@@ -100,6 +104,7 @@ provisioningFor "pi":
   tarball url = PiBase & "pi-linux-x64.tar.gz",
     sha256 = "811c6f2c9e7aaee252b5404252e556fb713aa209c1f7f924226aa77d4ef70cb5",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     stripComponents = 1,
     executablePath = "pi",
     env = "PI_SKIP_VERSION_CHECK=1",
@@ -113,6 +118,7 @@ provisioningFor "pi":
   tarball url = PiBase & "pi-linux-arm64.tar.gz",
     sha256 = "42805cd5615952fcbbfc9c56b04f8feb84395134952e169a6cdc8d7676975666",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     stripComponents = 1,
     executablePath = "pi",
     env = "PI_SKIP_VERSION_CHECK=1",
@@ -126,6 +132,7 @@ provisioningFor "pi":
   tarball url = PiBase & "pi-darwin-arm64.tar.gz",
     sha256 = "56b5e194d485ced555667b8ba3276157a8272e9ecde9e001e428af80985bdd9b",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     stripComponents = 1,
     executablePath = "pi",
     env = "PI_SKIP_VERSION_CHECK=1",
@@ -139,6 +146,7 @@ provisioningFor "pi":
   tarball url = PiBase & "pi-darwin-x64.tar.gz",
     sha256 = "f997a088613514ac97d913aeea7642094d84fe6d46854ff7e64e2c12e536dc50",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     stripComponents = 1,
     executablePath = "pi",
     env = "PI_SKIP_VERSION_CHECK=1",
@@ -152,6 +160,7 @@ provisioningFor "pi":
   tarball url = PiBase & "pi-windows-x64.zip",
     sha256 = "e6adb8cb8c84eca14391ad24b363de9d2be98a89ca3ba3fdee1fa4de32b7f2e8",
     archiveType = "zip",
+    nonRedistributable = true,
     executablePath = "pi.exe",
     env = "PI_SKIP_VERSION_CHECK=1",
     env = "PI_TELEMETRY=0",
@@ -164,6 +173,7 @@ provisioningFor "pi":
   tarball url = PiBase & "pi-windows-arm64.zip",
     sha256 = "e83404bc5a6003ac950683edd9b6cf499dac91ec890d8439a8c32528de534a77",
     archiveType = "zip",
+    nonRedistributable = true,
     executablePath = "pi.exe",
     env = "PI_SKIP_VERSION_CHECK=1",
     env = "PI_TELEMETRY=0",

@@ -304,6 +304,7 @@ for a shared cache. observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c.
 name = "kimi-code"
 homepage = "https://www.kimi.com/code/docs/"
 provenance_class = "source-available"
+republication = "denied"
 source_available = true
 main_programs = ["kimi"]
 release_channel = "github-release"
@@ -340,6 +341,7 @@ the addon. observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c.
 name = "pi"
 homepage = "https://github.com/earendil-works/pi"
 provenance_class = "source-available"
+republication = "denied"
 source_available = true
 main_programs = ["pi"]
 release_channel = "github-release"
@@ -375,6 +377,7 @@ observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c.
 name = "hermes-desktop"
 homepage = "https://hermes-agent.nousresearch.com/"
 provenance_class = "source-available"
+republication = "denied"
 source_available = true
 main_programs = ["hermes-desktop"]
 release_channel = "r2-stable-feed"

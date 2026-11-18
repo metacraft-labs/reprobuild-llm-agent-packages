@@ -22,11 +22,15 @@
 ##   ``@moonshot-ai/kimi-code@2.6.3`` --
 ##   https://raw.githubusercontent.com/MoonshotAI/kimi-code/%40moonshot-ai%2Fkimi-code%402.6.3/LICENSE
 ##   -- is the MIT licence, "Copyright (c) 2026 Moonshot AI".
-##   Because the licence permits redistribution these payloads do NOT set
-##   ``nonRedistributable`` (the catalog applies that to closed-source
-##   vendor binaries such as amp and claude-code, not to MIT-licensed
-##   upstream builds such as goose and codex). The binary bundles third-party
-##   dependencies under their own licences that this recipe has not audited.
+##   The binary bundles third-party dependencies under their own licences
+##   that this recipe has not audited.
+##   This realization is the CONVENIENCE one: the primary realization of a
+##   source-available package is a from-source build, which does not exist
+##   yet (reprobuild-pm issue 2026-11-18-nine-agents-source-available-without-from-source-realization).
+##   Every slice sets ``nonRedistributable``: what is realized is a prebuilt
+##   aggregate whose bundled third-party dependencies this recipe has not
+##   audited, and AGENTS.md § Cache policy says a vendor-binary payload is
+##   never republished into a shared cache, whatever the upstream licence.
 ##
 ## ## What the archives are
 ##
@@ -103,6 +107,7 @@ provisioningFor "kimi-code":
   tarball url = KimiCodeBase & "linux-x64.tar.gz",
     sha256 = "a138b9854236c2b97f8bd6f28f93dd756f720383177e5cf0f95810b2872bab43",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     executablePath = "kimi",
     env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
@@ -114,6 +119,7 @@ provisioningFor "kimi-code":
   tarball url = KimiCodeBase & "linux-arm64.tar.gz",
     sha256 = "f3da3f2268683260fe39ceaf37aacd973e56b7e42f41858ff113ed06789f493a",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     executablePath = "kimi",
     env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
@@ -125,6 +131,7 @@ provisioningFor "kimi-code":
   tarball url = KimiCodeBase & "darwin-arm64.tar.gz",
     sha256 = "2f65c94f666b02641a20d305d84a3f5513938bf21d4884c82f9e479ffebccc00",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     executablePath = "kimi",
     env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
@@ -136,6 +143,7 @@ provisioningFor "kimi-code":
   tarball url = KimiCodeBase & "darwin-x64.tar.gz",
     sha256 = "b8ba43a0bd3e6eded9ef8bfd8f7088f509d076b1da45a75eaa6997c0f1683471",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     executablePath = "kimi",
     env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
@@ -147,6 +155,7 @@ provisioningFor "kimi-code":
   tarball url = KimiCodeBase & "win32-x64.tar.gz",
     sha256 = "10572ae83bdff33316e9f8ab6fd2a73a9e72b713a5b75764d19c361170879018",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     executablePath = "kimi.exe",
     env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,
@@ -158,6 +167,7 @@ provisioningFor "kimi-code":
   tarball url = KimiCodeBase & "win32-arm64.tar.gz",
     sha256 = "f32426d24320a91a9a649dfbe4829fae52b24b7349ed75285214b39f7884c99a",
     archiveType = "tar.gz",
+    nonRedistributable = true,
     executablePath = "kimi.exe",
     env = "KIMI_CODE_NO_AUTO_UPDATE=1",
     packageId = "kimi-code@" & KimiCodeVersion,

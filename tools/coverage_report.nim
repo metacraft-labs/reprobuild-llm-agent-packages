@@ -92,6 +92,10 @@ type
     packaged*: seq[string]
     packaged_version*: string
     realization_blocked*: string
+    republication*: string
+      ## "denied" when the realization's payload must not be republished
+      ## into a shared cache although the package is source-available: the
+      ## payload is a prebuilt aggregate (see AGENTS.md § Cache policy).
     notes*: string
 
   UncoveredEntry* = object
