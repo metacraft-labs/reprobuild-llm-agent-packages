@@ -63,4 +63,8 @@ jobs:
         working-directory: ../reprobuild
         run: dev-exec just build
       - name: The committed published-interfaces/ is what publishing writes
-        run: ../reprobuild/build/bin/repro catalog publish --check
+        # The extraction compiles each provider with nim, so it runs in the
+        # dev environment like the build above.
+        env:
+          REPROBUILD_REPO_ROOT: ${{ github.workspace }}/../reprobuild
+        run: dev-exec ../reprobuild/build/bin/repro catalog publish --check
