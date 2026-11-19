@@ -218,6 +218,29 @@ proc problems*(inv: Inventory; registered: HashSet[string]): seq[string] =
       result.add(name & ": registered as a package, and the inventory does " &
         "not mention it")
 
+proc sourceRealizationProblems*(inv: Inventory; root: string): seq[string] =
+  ## The inventory's claim of a from-source realization, checked against the
+  ## tree. A source recipe imports reprobuild's DSL stdlib, which registers
+  ## every stdlib package, so this tool cannot import one without those
+  ## packages becoming "registered, and not in the inventory"; the recipe is
+  ## compiled by `tests/test_source_realizations.nim` instead and the two
+  ## agree here by file presence.
+  var claimed = initHashSet[string]()
+  for entry in inv.agent:
+    let recipe = root / "packages" / "source" / entry.name / "repro.nim"
+    if "source" in entry.packaged:
+      claimed.incl(entry.name)
+      if not fileExists(recipe):
+        result.add(entry.name & ": the inventory says a source " &
+          "realization is packaged, but " & recipe & " does not exist")
+  let sourceRoot = root / "packages" / "source"
+  if dirExists(sourceRoot):
+    for kind, path in walkDir(sourceRoot):
+      let name = path.lastPathPart
+      if kind == pcDir and name notin claimed:
+        result.add(name & ": packages/source/" & name & " exists, and the " &
+          "inventory does not say `source` is packaged")
+
 proc renderReport*(inv: Inventory): string =
   var rows: seq[AgentEntry] = inv.agent
   rows.sort(proc (a, b: AgentEntry): int = cmp(a.name, b.name))
@@ -287,7 +310,8 @@ when isMainModule:
         "\nusage: coverage_report [--check]", 2)
 
   let inv = loadInventoryFile()
-  let found = problems(inv, registeredPackageNames())
+  let found = problems(inv, registeredPackageNames()) &
+    sourceRealizationProblems(inv, currentSourcePath.parentDir.parentDir)
   if not checkOnly:
     stdout.write(renderReport(inv))
   if found.len > 0:

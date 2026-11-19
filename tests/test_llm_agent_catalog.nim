@@ -419,7 +419,9 @@ suite "the upstream inventory and the catalog agree":
     # claimed interface with no registered package, a registered package
     # the inventory does not mention, a realization with no version, an
     # interface-only row with no reason.
-    let found = coverage.problems(inv, coverage.registeredPackageNames())
+    let found = coverage.problems(inv, coverage.registeredPackageNames()) &
+      coverage.sourceRealizationProblems(inv,
+        parentDir(parentDir(currentSourcePath())))
     for problem in found:
       checkpoint(problem)
     check found.len == 0

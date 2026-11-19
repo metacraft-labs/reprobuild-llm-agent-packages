@@ -2,6 +2,7 @@ test:
   nim c -r --hints:off --warnings:off --out:build/test-nimcache-locality tests/test_nimcache_is_worktree_local.nim
   nim c -r --hints:off --warnings:off --nimcache:build/nimcache-catalog --out:build/test-catalog tests/test_llm_agent_catalog.nim
   nim c -r --hints:off --warnings:off --nimcache:build/nimcache-npm-closure --out:build/test-npm-closure tests/test_npm_closure_manifest.nim
+  nim c -r --hints:off --warnings:off --nimcache:build/nimcache-source-realizations --out:build/test-source-realizations tests/test_source_realizations.nim
 
 # Print the canonical interface fingerprints external catalogs pin.
 fingerprints:
@@ -37,6 +38,14 @@ coverage-check:
 # `npm install <pkg>@<version> --package-lock-only` that produced it).
 closure-manifest lock root out platform source:
   nim c -r --hints:off --warnings:off --nimcache:build/nimcache-closure --out:build/npm-closure-manifest tools/npm_closure_manifest.nim --lock={{lock}} --root={{root}} --out={{out}} {{ if platform == "" { "" } else { "--platform=" + platform } }} --lock-source={{ quote(source) }}
+
+# Regenerate a BUILD-closure manifest (every archive `npm ci` installs, for a
+# from-source build) from an npm lock file. Same arguments as
+# `closure-manifest` minus root and platform.
+#
+#   just build-closure-manifest <lock> <out> "<source>"
+build-closure-manifest lock out source:
+  nim c -r --hints:off --warnings:off --nimcache:build/nimcache-closure --out:build/npm-closure-manifest tools/npm_closure_manifest.nim --build-closure --lock={{lock}} --out={{out}} --lock-source={{ quote(source) }}
 
 # Regenerate `published-interfaces/` from the providers (commit the result);
 # `publish-check` is what CI runs: it fails when the directory is stale.

@@ -55,10 +55,16 @@ source_available = true
 main_programs = ["gemini"]
 release_channel = "npm"
 observed_pin = "0.59.0"
-packaged = ["interface", "vendor"]
+packaged = ["interface", "source", "vendor"]
 packaged_version = "0.59.0"
 notes = """
-Realized from the npm registry tarball, not from a release binary: upstream
+PRIMARY realization: built from source, `packages/source/gemini-cli/` (the
+v0.59.0 tag, through the `from-source-npm` convention, with a corrected npm
+lock and a build-closure manifest of 1464 pinned archives). The vendor
+realization below is the convenience one and is not equivalent provenance.
+
+The vendor realization is the npm registry tarball, not a release binary:
+upstream
 publishes none at this pin (the GitHub release carries darwin archives only).
 
 The closure was never the obstacle, though it was assumed to be.
@@ -82,9 +88,8 @@ its interpreter from PATH, so a recipe using this package must declare node.
 sha256 of the registry tarball:
 59dc2cdb098b3000d36e34a185fc873932df4fd9d00900e817f2b19cd349d98b
 
-A from-source realization is still the primary one for an Apache-2.0 upstream
-and belongs under `packages/source/gemini-cli/`; this entry sits alongside it
-rather than standing in for it.
+The from-source realization is the primary one for an Apache-2.0 upstream;
+this entry sits alongside it rather than standing in for it.
 """
 
 [[agent]]
