@@ -63,8 +63,11 @@ jobs:
         working-directory: ../reprobuild
         run: dev-exec just build
       - name: The committed published-interfaces/ is what publishing writes
-        # The extraction compiles each provider with nim, so it runs in the
-        # dev environment like the build above.
+        # dev-exec needs a flake.nix in its working directory, which the
+        # catalog does not have: run it from the reprobuild checkout, as the
+        # build step does, and name the catalog with --root. The extraction
+        # compiles each provider with nim, hence the dev environment.
+        working-directory: ../reprobuild
         env:
           REPROBUILD_REPO_ROOT: ${{ github.workspace }}/../reprobuild
-        run: dev-exec ../reprobuild/build/bin/repro catalog publish --check
+        run: dev-exec build/bin/repro catalog publish --check --root=${{ github.workspace }}
