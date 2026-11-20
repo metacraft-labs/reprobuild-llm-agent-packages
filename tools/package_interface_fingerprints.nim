@@ -31,10 +31,22 @@ import "../packages/interfaces/copilot/repro" as copilotInterface
 import "../packages/interfaces/codex-acp/repro" as codexAcpInterface
 import "../packages/interfaces/claude-code-acp/repro" as claudeCodeAcpInterface
 import "../packages/interfaces/amp/repro" as ampInterface
+import "../packages/interfaces/grok/repro" as grokInterface
+import "../packages/interfaces/hermes-agent/repro" as hermesAgentInterface
+import "../packages/interfaces/hermes-desktop/repro" as hermesDesktopInterface
+import "../packages/interfaces/kimi-code/repro" as kimiCodeInterface
+import "../packages/interfaces/minimax-code/repro" as minimaxCodeInterface
+import "../packages/interfaces/muse-code/repro" as museCodeInterface
+import "../packages/interfaces/openclaw/repro" as openclawInterface
+import "../packages/interfaces/pi/repro" as piInterface
+import "../packages/interfaces/zcode/repro" as zcodeInterface
 
 const PublishedPackages = [
-  "amp", "claude-code", "claude-code-acp", "codex", "codex-acp", "copilot",
-  "gemini-cli", "goose", "opencode", "qwen-code"]
+  "amp", "claude-code", "claude-code-acp", "codex",
+  "codex-acp", "copilot", "gemini-cli", "goose",
+  "grok", "hermes-agent", "hermes-desktop", "kimi-code",
+  "minimax-code", "muse-code", "openclaw", "opencode",
+  "pi", "qwen-code", "zcode"]
 
 let packages = registeredPackages()
 var selected = packages.filterIt(it.packageName in PublishedPackages)

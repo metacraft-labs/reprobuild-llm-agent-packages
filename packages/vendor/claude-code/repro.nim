@@ -120,3 +120,9 @@ provisioningFor "claude-code":
     os = "macos",
     lockIdentity = "vendor-binary:claude-code@" & ClaudeCodeVersion &
       ":macos-aarch64:sha256:195e24e8e1f9bf46f1eaee72d434a33e18f9f5796f29a6348a00d16c5f8aee75"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package claudeCodeRealizations:
+  discard

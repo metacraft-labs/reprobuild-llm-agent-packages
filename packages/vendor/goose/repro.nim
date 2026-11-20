@@ -37,3 +37,9 @@ provisioningFor "goose":
     os = "windows",
     lockIdentity = "vendor-binary:goose@" & GooseVersion &
       ":windows-x86_64:sha256:defdbf4f905fb913152a1cf5938674a0862f23c7d453251bc27de59814c1c609"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package gooseRealizations:
+  discard

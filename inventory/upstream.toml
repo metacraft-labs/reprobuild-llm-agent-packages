@@ -247,6 +247,172 @@ the licence verified AT THE PINNED VERSION rather than inheriting an earlier
 judgement.
 """
 
+[[agent]]
+name = "grok"
+homepage = "https://x.ai/cli"
+provenance_class = "vendor-binary"
+source_available = false
+main_programs = ["grok", "agent"]
+release_channel = "gcs-stable-pointer"
+observed_pin = "1.0.77"
+packaged = ["interface", "vendor"]
+packaged_version = "1.0.88"
+notes = """
+Bare per-platform executables from storage.googleapis.com/grok-build-public-artifacts/cli;
+one binary serves both grok and agent. Upstream publishes no checksums, so
+digests are self-computed. Fetch-on-user-behalf, not for a shared cache.
+observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c, the revision the
+first consumer's flake locks.
+"""
+
+[[agent]]
+name = "muse-code"
+homepage = "https://dev.meta.ai/"
+provenance_class = "vendor-binary"
+source_available = false
+main_programs = ["muse"]
+release_channel = "muse-stable"
+observed_pin = "1.4.15-R8339.1"
+packaged = ["interface", "vendor"]
+packaged_version = "1.4.23-R8977.1"
+notes = """
+Bare per-platform executables from lookaside.facebook.com; digests are the
+sha256 values in upstream's per-version manifest.json. Auto-update lives in
+upstream's launcher script, not in the payload. Fetch-on-user-behalf, not for
+a shared cache. observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c.
+"""
+
+[[agent]]
+name = "zcode"
+homepage = "https://zcode.z.ai"
+provenance_class = "vendor-binary"
+source_available = false
+main_programs = ["zcode"]
+release_channel = "download-page"
+observed_pin = "3.17.2"
+packaged = ["interface", "vendor"]
+packaged_version = "3.18.2"
+notes = """
+Electron desktop app. Linux from the pacman package (xz-compressed despite the
+.zst suffix), macOS as an app-bundle zip. Windows (NSIS installer) not
+packaged. The updater cannot be disabled by the record kinds. sha256 is
+self-computed; sha512 matches upstream's latest.yml. Fetch-on-user-behalf, not
+for a shared cache. observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c.
+"""
+
+[[agent]]
+name = "kimi-code"
+homepage = "https://www.kimi.com/code/docs/"
+provenance_class = "source-available"
+republication = "denied"
+source_available = true
+main_programs = ["kimi"]
+release_channel = "github-release"
+observed_pin = "2.5.3"
+packaged = ["interface", "vendor"]
+packaged_version = "2.6.3"
+notes = """
+MIT (LICENSE at tag @moonshot-ai/kimi-code@2.6.3), pnpm workspace; no source
+realization is expressible with the current record kinds. The vendor payload
+is upstream's flat per-platform release tarball, six slices, digests from
+upstream's .tar.gz.sha256 assets. Each slice sets
+KIMI_CODE_NO_AUTO_UPDATE=1 as an activated-environment binding. observed_pin is the
+numtide/llm-agents.nix pin at 3c4f3e7c.
+"""
+
+[[agent]]
+name = "minimax-code"
+homepage = "https://github.com/MiniMax-AI/minimax-code"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["mcode"]
+release_channel = "npm"
+observed_pin = "0.7.6"
+packaged = ["interface"]
+realization_blocked = """
+Upstream's only channel is npm (@minimax-ai/code 0.7.7; the repository's
+source is at 0.7.2). The package needs better-sqlite3's native addon, which an
+npm install script produces for the user's Node ABI; closureManifest runs no
+lifecycle scripts. Verified: mcode --version works, mcode exec fails without
+the addon. observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c.
+"""
+
+[[agent]]
+name = "pi"
+homepage = "https://github.com/earendil-works/pi"
+provenance_class = "source-available"
+republication = "denied"
+source_available = true
+main_programs = ["pi"]
+release_channel = "github-release"
+observed_pin = "1.5.2"
+packaged = ["interface", "vendor"]
+packaged_version = "1.5.2"
+notes = """
+MIT (LICENSE at tag v1.5.2). Vendor payload is upstream's bun-compiled release
+archive, six slices, digests from the release SHA256SUMS; no source
+realization is expressible (bun build --compile over an npm workspace). Each
+slice sets PI_SKIP_VERSION_CHECK=1 and PI_TELEMETRY=0 as activated-environment
+bindings.
+"""
+
+[[agent]]
+name = "hermes-agent"
+homepage = "https://hermes-agent.nousresearch.com/"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["hermes"]
+release_channel = "pypi"
+observed_pin = "0.23.0"
+packaged = ["interface"]
+realization_blocked = """
+A Python 3.14 program whose closure is a marker-gated uv.lock of exact-pinned
+PyPI wheels, some native. The tarball record and its npm-shaped
+closureManifest cannot resolve or unpack a wheel closure. GitHub releases
+carry no program archives (v0.23.2: none) and PyPI is stale at 0.19.0.
+observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c.
+"""
+
+[[agent]]
+name = "hermes-desktop"
+homepage = "https://hermes-agent.nousresearch.com/"
+provenance_class = "source-available"
+republication = "denied"
+source_available = true
+main_programs = ["hermes-desktop"]
+release_channel = "r2-stable-feed"
+observed_pin = "0.23.0"
+packaged = ["interface", "vendor"]
+packaged_version = "0.22.0"
+notes = """
+macOS arm64 only: upstream publishes no macOS x86_64 bundle, no Linux desktop
+build, and a Windows MSIX bundle the tarball record cannot install. The bundle
+is upstream's signed, notarized binary build, not from source. The stable
+channel lags the GitHub tags (0.22.0 vs 0.23.2). In-app Squirrel.Mac
+self-update is not disabled by the recipe (upstream documents no off switch). observed_pin is the
+numtide/llm-agents.nix pin at 3c4f3e7c.
+"""
+
+[[agent]]
+name = "openclaw"
+homepage = "https://openclaw.ai"
+provenance_class = "source-available"
+source_available = true
+main_programs = ["openclaw"]
+release_channel = "npm"
+observed_pin = "2026.9.5"
+packaged = ["interface", "vendor"]
+packaged_version = "2026.11.5"
+notes = """
+Realized from the npm registry tarball (compiled dist/) plus a per-platform
+closure manifest (362-367 entries, generated with --build-closure because
+--root cannot handle bundleDependencies or nested lock entries). Needs node
+>=24.16 on PATH. The update check is on by default; each slice sets
+OPENCLAW_NO_AUTO_UPDATE=1 as an activated-environment binding, and the recipe
+cannot set update.checkOnStart.
+observed_pin is the numtide/llm-agents.nix pin at 3c4f3e7c.
+"""
+
 # ---------------------------------------------------------------------------
 # Known upstreams with NO interface in this catalog. That is the whole
 # meaning of this section, and it is why an agent with an interface but no

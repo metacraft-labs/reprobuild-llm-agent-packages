@@ -16,7 +16,7 @@
 ##     is the specific authoring mistake that yields a package which
 ##     resolves everywhere and runs on one machine.
 
-import std/[os, sequtils, sets, strutils, unittest]
+import std/[os, sequtils, sets, strutils, tables, unittest]
 
 import repro_interface_artifacts
 import repro_project_dsl
@@ -31,6 +31,15 @@ import "../packages/interfaces/copilot/repro" as copilotInterface
 import "../packages/interfaces/codex-acp/repro" as codexAcpInterface
 import "../packages/interfaces/claude-code-acp/repro" as claudeCodeAcpInterface
 import "../packages/interfaces/amp/repro" as ampInterface
+import "../packages/interfaces/grok/repro" as grokInterface
+import "../packages/interfaces/hermes-agent/repro" as hermesAgentInterface
+import "../packages/interfaces/hermes-desktop/repro" as hermesDesktopInterface
+import "../packages/interfaces/kimi-code/repro" as kimiCodeInterface
+import "../packages/interfaces/minimax-code/repro" as minimaxCodeInterface
+import "../packages/interfaces/muse-code/repro" as museCodeInterface
+import "../packages/interfaces/openclaw/repro" as openclawInterface
+import "../packages/interfaces/pi/repro" as piInterface
+import "../packages/interfaces/zcode/repro" as zcodeInterface
 
 import "../packages/vendor/claude-code/repro" as claudeCodeVendor
 import "../packages/vendor/codex/repro" as codexVendor
@@ -42,12 +51,22 @@ import "../packages/vendor/gemini-cli/repro" as geminiCliVendor
 import "../packages/vendor/qwen-code/repro" as qwenCodeVendor
 import "../packages/vendor/claude-code-acp/repro" as claudeCodeAcpVendor
 import "../packages/vendor/amp/repro" as ampVendor
+import "../packages/vendor/grok/repro" as grokVendor
+import "../packages/vendor/hermes-desktop/repro" as hermesDesktopVendor
+import "../packages/vendor/kimi-code/repro" as kimiCodeVendor
+import "../packages/vendor/muse-code/repro" as museCodeVendor
+import "../packages/vendor/openclaw/repro" as openclawVendor
+import "../packages/vendor/pi/repro" as piVendor
+import "../packages/vendor/zcode/repro" as zcodeVendor
 
 import ../tools/coverage_report as coverage
 
 const PublishedInterfaces = [
-  "amp", "claude-code", "claude-code-acp", "codex", "codex-acp", "copilot",
-  "gemini-cli", "goose", "opencode", "qwen-code"]
+  "amp", "claude-code", "claude-code-acp", "codex",
+  "codex-acp", "copilot", "gemini-cli", "goose",
+  "grok", "hermes-agent", "hermes-desktop", "kimi-code",
+  "minimax-code", "muse-code", "openclaw", "opencode",
+  "pi", "qwen-code", "zcode"]
 
 suite "LLM agent catalog":
   test "each published interface is registered exactly once":
@@ -265,6 +284,63 @@ suite "LLM agent catalog":
     check digests.len == 6
     check platforms.len == 6
 
+  test "each new multi-platform agent covers distinct platforms with distinct digests":
+    # The same guard as claude-code's above, for the agents whose slices
+    # are separate binaries. `openclaw` is deliberately absent: its slices
+    # share one root archive and differ by closure manifest, which the next
+    # case checks.
+    for (pkg, count) in [("grok", 6), ("kimi-code", 6), ("pi", 6),
+                         ("muse-code", 6), ("zcode", 4)]:
+      let contributions = registeredProvisioningContributions().filterIt(
+        it.targetPackage == pkg)
+      check contributions.len == 1
+      let slices = contributions[0].tarballProvisioning
+      checkpoint(pkg)
+      check slices.len == count
+      var digests = initHashSet[string]()
+      var platforms = initHashSet[string]()
+      for slice in slices:
+        digests.incl(slice.sha256)
+        platforms.incl(slice.cpu & "-" & slice.os)
+      check digests.len == count
+      check platforms.len == count
+
+  test "every openclaw slice names its own closure, carrying its own platform":
+    # One root archive for every platform (the npm package is JavaScript);
+    # what differs is the closure, so a repeated manifest or a manifest
+    # whose native packages belong to another platform is the failure this
+    # catches.
+    let contributions = registeredProvisioningContributions().filterIt(
+      it.targetPackage == "openclaw")
+    check contributions.len == 1
+    let slices = contributions[0].tarballProvisioning
+    check slices.len == 6
+    check slices.mapIt(it.sha256).toHashSet().len == 1
+    check slices.mapIt(it.closureManifest).toHashSet().len == 6
+    let repoRoot = parentDir(parentDir(currentSourcePath()))
+    for slice in slices:
+      let path = repoRoot / "packages" / "vendor" / "openclaw" / slice.closureManifest
+      checkpoint(slice.closureManifest)
+      check fileExists(path)
+      let text = readFile(path)
+      # npm's name for the platform, which is what the closure's native
+      # packages are keyed on.
+      let npmOs = case slice.os
+        of "windows": "win32"
+        of "macos": "darwin"
+        else: "linux"
+      let npmCpu = if slice.cpu == "x86_64": "x64" else: "arm64"
+      check slice.closureManifest.contains(npmOs & "-" & npmCpu)
+      check text.contains("-" & npmOs & "-" & npmCpu)
+      # Nor the other CPU's on this OS: a darwin-x64 entry inside the
+      # darwin-arm64 closure would run on one Mac and not the other.
+      let otherCpu = if npmCpu == "x64": "arm64" else: "x64"
+      check not text.contains("-" & npmOs & "-" & otherCpu)
+      # A closure never carries another OS's native esbuild.
+      for other in ["win32", "darwin", "linux"]:
+        if other != npmOs:
+          check not text.contains("@esbuild/" & other & "-")
+
   test "the interface artifact round-trips with its contributions":
     let artifact = artifactFromRegisteredDsl(
       parentDir(getCurrentDir()) / "repro.nim")
@@ -273,6 +349,60 @@ suite "LLM agent catalog":
     let roundTrip = decodeProjectInterfaceArtifact(
       encodeProjectInterfaceArtifact(artifact))
     check roundTrip.projectInterface.provisioningContributions.len == expected
+
+  test "a closure package's entries travel in the artifact a consumer reads":
+    # A consumer reads `published-interfaces/` and has no checkout, so the
+    # manifest FILE beside a provider is out of its reach: the record must
+    # carry the parsed entries (envelope v34; Federated-Catalog-Imports.md
+    # § Home profiles, option 1). Compared with the committed file through
+    # the codec, so a dropped, truncated or stale block goes red. Falsifying
+    # mutation: stop inlining in the lift -> every case here is red.
+    let artifact = artifactFromRegisteredDsl(
+      parentDir(getCurrentDir()) / "repro.nim")
+    let roundTrip = decodeProjectInterfaceArtifact(
+      encodeProjectInterfaceArtifact(artifact))
+    let repoRoot = parentDir(parentDir(currentSourcePath()))
+    var closures = 0
+    for contribution in roundTrip.projectInterface.provisioningContributions:
+      for slice in contribution.tarballProvisioning:
+        if slice.closureManifest.len == 0:
+          check slice.closureEntries.len == 0
+          continue
+        inc closures
+        let path = repoRoot / "packages" / "vendor" /
+          contribution.targetPackage / slice.closureManifest
+        checkpoint(path)
+        let fromFile = parseClosureManifestText(readFile(path), path)
+        check fromFile.len > 0
+        check slice.closureEntries == fromFile
+    # amp and claude-code-acp (one slice each or per platform) plus
+    # openclaw's six; a catalog that lost its closures would pass vacuously.
+    check closures >= 8
+
+  test "the self-update bindings survive the artifact a consumer actually reads":
+    # The recipe's `env` is the only isolation of a vendor agent's
+    # self-update this catalog can express, and a consumer sees it only
+    # through the artifact. A binding dropped by the codec would leave the
+    # recipe reading as isolated while the program updated itself.
+    let artifact = artifactFromRegisteredDsl(
+      parentDir(getCurrentDir()) / "repro.nim")
+    let roundTrip = decodeProjectInterfaceArtifact(
+      encodeProjectInterfaceArtifact(artifact))
+    var expected = initTable[string, seq[string]]()
+    expected["grok"] = @["GROK_DISABLE_AUTOUPDATER=1"]
+    expected["muse-code"] = @["MUSE_NO_AUTO_UPDATE=1"]
+    expected["kimi-code"] = @["KIMI_CODE_NO_AUTO_UPDATE=1"]
+    expected["pi"] = @["PI_SKIP_VERSION_CHECK=1", "PI_TELEMETRY=0"]
+    expected["openclaw"] = @["OPENCLAW_NO_AUTO_UPDATE=1"]
+    var seen = initHashSet[string]()
+    for contribution in roundTrip.projectInterface.provisioningContributions:
+      if contribution.targetPackage notin expected:
+        continue
+      for slice in contribution.tarballProvisioning:
+        checkpoint(contribution.targetPackage & " " & slice.os & "-" & slice.cpu)
+        check slice.detail.env == expected[contribution.targetPackage]
+        seen.incl(contribution.targetPackage)
+    check seen.len == expected.len
 
 suite "the upstream inventory and the catalog agree":
   ## `inventory/upstream.toml` is what the coverage report is generated
@@ -313,7 +443,10 @@ suite "the upstream inventory and the catalog agree":
         continue
       checkpoint(entry.name)
       check entry.realization_blocked.strip().len > 0
-      check entry.realization_blocked.contains("npm")
+      # Names the channel that cannot be provisioned. `npm` was the only
+      # one until a Python agent (hermes-agent, PyPI wheels) joined.
+      check entry.realization_blocked.contains("npm") or
+        entry.realization_blocked.contains("PyPI")
 
   test "the report renders every row it was given":
     let report = coverage.renderReport(inv)
@@ -407,17 +540,30 @@ suite "non-redistributable payloads cannot reach a shared cache":
     # rather than catalog-wide: publishing what we ARE entitled to publish is
     # the point of a shared cache, and a blanket refusal would cost every
     # other consumer the substitution.
+    #
+    # What a source-available package's realization is decides it, and the
+    # inventory records that: `republication = "denied"` marks a realization
+    # whose payload is a prebuilt aggregate (AGENTS.md § Cache policy). The
+    # rule is one policy read from data, not a list in this test; the flag is
+    # checked from both sides, so a denial cannot go stale either way.
     var publishable = initHashSet[string]()
+    var denied = initHashSet[string]()
     for entry in inv.agent:
       if entry.provenance_class == "source-available":
         publishable.incl(entry.name)
+        if entry.republication == "denied":
+          denied.incl(entry.name)
+    check denied.len >= 3   # kimi-code, pi, hermes-desktop
     for contribution in registeredProvisioningContributions():
       if contribution.targetPackage notin publishable:
         continue
       for slice in contribution.tarballProvisioning:
         checkpoint(contribution.targetPackage & " " & slice.os & "-" &
           slice.cpu)
-        check not slice.nonRedistributable
+        if contribution.targetPackage in denied:
+          check slice.nonRedistributable
+        else:
+          check not slice.nonRedistributable
 
   test "the flag survives the artifact a consumer actually reads":
     # A consumer sees a contributed provisioning only through the interface
@@ -464,8 +610,9 @@ suite "non-redistributable payloads cannot reach a shared cache":
         # The name the launcher takes travels with it; without the alias
         # there is nothing to write the pair under.
         check slice.executableAlias.len > 0
-    check launched.len == 4
+    check launched.len == 5
     check "gemini-cli" in launched
     check "qwen-code" in launched
     check "claude-code-acp" in launched
     check "amp" in launched
+    check "openclaw" in launched

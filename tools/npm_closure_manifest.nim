@@ -20,16 +20,33 @@
 ##
 ## Usage::
 ##
-##   just closure-manifest \
-##     LOCK=../agent-harbor/scripts/agent-tools/package-lock.json \
-##     ROOT=@zed-industries/claude-code-acp \
-##     OUT=packages/vendor/claude-code-acp/closures/claude-code-acp.manifest
+##   just closure-manifest <lock> <root> <out> <npm-os>-<npm-cpu> <source>
 ##
-## ``--platform=<npm-os>-<npm-cpu>`` additionally follows
-## ``optionalDependencies`` and keeps only the entries whose ``os``/``cpu``
-## constraints admit that platform, which is how a package whose native
-## binary arrives through npm's optional-dependency mechanism gets one
-## manifest per reprobuild platform slice.
+## (positional: just does not take ``name=value`` arguments; pass ``""`` as
+## the platform for a closure without platform-specific members). For example
+## ``just closure-manifest ../agent-harbor/scripts/agent-tools/package-lock.json
+## @zed-industries/claude-code-acp
+## packages/vendor/claude-code-acp/closures/claude-code-acp-linux-x64.manifest
+## linux-x64 "agent-harbor scripts/agent-tools/package-lock.json at <commit>"``.
+## A closure with platform-specific optional members, such as
+## claude-code-acp's (claude-agent-sdk's ``@img/sharp-*``), is refused
+## without a platform; the committed ``claude-code-acp.manifest`` predates
+## that rule and was written without following optional dependencies.
+##
+## ``--root`` is the closure ``npm install --omit=dev`` would put beside one
+## package, walked as ``closureOf`` describes: nested versions stay nested,
+## members of the root's ``bundleDependencies`` ship inside its archive and
+## are not entries, optional dependencies are followed where the platform
+## admits them. A closure with ``os``/``cpu``/``libc``-constrained members is
+## refused without ``--platform=<npm-os>-<npm-cpu>``, which is how a package
+## whose native binary arrives through npm's optional-dependency mechanism
+## gets one manifest per reprobuild platform slice. ``libc`` is not a filter:
+## see ``admits``. ``--lock-source=<text>`` (required) names the lock in the
+## header. The archives are hashed but NOT checked against the lock's
+## ``integrity``, unlike reprobuild-packages' generator.
+##
+## ``--build-closure`` is every archive a full ``npm ci`` installs, for a
+## from-source build; see ``installClosure``.
 
 import std/[algorithm, json, os, osproc, sets, strformat, strutils, tables]
 
@@ -40,72 +57,267 @@ type
     path*: string
     url*: string
 
-proc die(message: string) =
+type
+  ClosureError* = object of CatchableError
+    ## A lock this tool refuses to turn into a manifest. Raised rather than
+    ## quitting so the refusals are testable; ``main`` reports it and exits 1.
+
+proc die(message: string) {.noreturn.} =
   stderr.writeLine("npm-closure-manifest: " & message)
   quit(1)
 
-proc lockEntry(packages: JsonNode; name: string): JsonNode =
-  let key = "node_modules/" & name
-  if packages.hasKey(key): packages[key] else: nil
+proc fail(message: string) {.noreturn.} =
+  raise newException(ClosureError, message)
+
+proc rootKey*(root: string): string =
+  ## ``--root`` names a package (``openclaw``, ``@scope/name``) installed at
+  ## the top of the lock's tree, or a lock key outright
+  ## (``node_modules/a/node_modules/b``) for one npm nested.
+  if root.startsWith("node_modules/"): root else: "node_modules/" & root
+
+proc parentScope(key: string): string =
+  ## The tree position one level up from ``key``, for npm's ancestor walk:
+  ## ``node_modules/a/node_modules/@s/b`` -> ``node_modules/a``;
+  ## ``node_modules/a`` -> ``""`` (the lock's root).
+  let idx = key.rfind("node_modules/")
+  if idx <= 0: "" else: key[0 ..< idx - 1]
+
+proc resolveDependency(packages: JsonNode; fromKey, name: string): string =
+  ## The lock key npm loads ``name`` from when ``fromKey`` requires it:
+  ## ``<fromKey>/node_modules/<name>`` first, then the same probe in every
+  ## ancestor, ending at the root's ``node_modules``. "" when no position
+  ## carries it.
+  var scope = fromKey
+  while true:
+    let candidate =
+      if scope.len == 0: "node_modules/" & name
+      else: scope & "/node_modules/" & name
+    if packages.hasKey(candidate):
+      return candidate
+    if scope.len == 0:
+      return ""
+    scope = parentScope(scope)
+
+iterator namesIn(entry: JsonNode; field: string): string =
+  let deps = entry{field}
+  if not deps.isNil and deps.kind == JObject:
+    for name in deps.keys:
+      yield name
+
+proc constrained(entry: JsonNode): bool =
+  entry.hasKey("os") or entry.hasKey("cpu") or entry.hasKey("libc")
 
 proc admits(entry: JsonNode; platform: string): bool =
-  ## npm records ``os`` and ``cpu`` constraints on a platform-specific
-  ## package. An entry with neither is universal.
+  ## npm's ``os``/``cpu`` check: a ``!``-prefixed value excludes, and any
+  ## positive value makes the list an allow-list. An entry with neither is
+  ## universal; an empty ``platform`` admits everything.
   ##
-  ## Empty ``platform`` means "take everything", which is right for a
-  ## closure whose members are all JavaScript.
+  ## ``libc`` is NOT checked, so a linux manifest keeps every libc variant
+  ## (``-gnu`` and ``-musl``). A reprobuild slice has no libc dimension, so
+  ## one linux manifest serves glibc and musl hosts; this relies on the
+  ## package's loader choosing by libc at run time. Whether that is the rule
+  ## or libc should be filtered is an open owner decision (reprobuild-pm
+  ## issue 2026-11-17-npm-closure-manifest-tool-cannot-take-a-root-with-
+  ## bundled-dependencies-and-ignores-libc).
   if platform.len == 0:
     return true
   let parts = platform.split('-')
   if parts.len != 2:
-    die("--platform must be <npm-os>-<npm-cpu>, e.g. win32-x64")
+    fail("--platform must be <npm-os>-<npm-cpu>, e.g. win32-x64")
   for (field, want) in {"os": parts[0], "cpu": parts[1]}:
     if not entry.hasKey(field):
       continue
-    var matched = false
+    var allowed = false
+    var anyPositive = false
     for value in entry[field]:
-      if value.getStr() == want:
-        matched = true
-        break
-    if not matched:
+      let v = value.getStr()
+      if v.startsWith("!"):
+        if v[1 .. ^1] == want:
+          return false
+      else:
+        anyPositive = true
+        if v == want:
+          allowed = true
+    if anyPositive and not allowed:
       return false
   true
 
-proc closureOf(packages: JsonNode; root, platform: string): seq[ClosureEntry] =
+proc closureOf*(packages: JsonNode; root, platform: string):
+    seq[ClosureEntry] =
+  ## The RUNTIME closure of one package: what ``npm install --omit=dev``
+  ## puts beside it, at the positions npm uses, walked the way npm resolves
+  ## a ``require`` (the same walk as reprobuild-packages'
+  ## ``tools/npm_closure_manifest.nim``, which reprobuild-pm
+  ## spec/From-Source-Build-Recipes.md "npm runtime closures" specifies):
+  ##
+  ## * from the root, follow ``dependencies``, ``optionalDependencies`` and
+  ##   the non-optional ``peerDependencies``; never ``devDependencies``;
+  ## * resolve each name from the DEPENDENT's position upward, so a version
+  ##   npm nested under the dependent that needs it is the one taken, beside
+  ##   the hoisted one;
+  ## * an entry npm marks ``inBundle`` ships inside its dependent's archive
+  ##   (``bundleDependencies``) and is not an entry of its own, whatever
+  ##   its os/cpu say;
+  ## * a member that requires the root by name is refused: the root is at
+  ##   the top of the prefix, not at a ``node_modules`` position;
+  ## * an optional dependency the lock does not carry, or whose os/cpu
+  ##   excludes the platform, is skipped as npm skips it; a required one is
+  ##   refused.
+  ##
+  ## Each entry's ``path`` is where it lands relative to the realized
+  ## prefix, which holds the root's own archive: a member nested under the
+  ## root moves up by the root's key, a hoisted one stays where npm put it,
+  ## and two members that would land on one path are refused, as is a
+  ## member landing on a bundled member's path at a different version.
+  let rootAt = rootKey(root)
+  if not packages.hasKey(rootAt):
+    fail("not in the lock file: " & rootAt)
   var seen = initHashSet[string]()
-  var stack = @[root]
-  var found = initTable[string, JsonNode]()
+  var stack = @[rootAt]
+  var members: seq[(string, JsonNode)] = @[]
+  var bundled: seq[(string, JsonNode)] = @[]
+  var platformSpecific: seq[string] = @[]
   while stack.len > 0:
-    let name = stack.pop()
-    if name in seen:
+    let key = stack.pop()
+    if key in seen:
       continue
-    let entry = lockEntry(packages, name)
-    if entry.isNil:
-      # A dependency the lock file does not carry is a broken lock, not a
-      # thing to skip quietly: the manifest would be short by exactly the
-      # package nothing can resolve.
-      die("not in the lock file: " & name)
-    if not entry.admits(platform):
-      continue
-    seen.incl(name)
-    found[name] = entry
-    for kind in ["dependencies", "optionalDependencies"]:
-      # Optional dependencies are followed only under an explicit
-      # --platform, because that is the only case where one of them is a
-      # REQUIRED member of the closure rather than a nicety npm may skip.
-      if kind == "optionalDependencies" and platform.len == 0:
-        continue
-      if entry.hasKey(kind):
-        for dep, _ in entry[kind].pairs:
-          stack.add(dep)
-  for name, entry in found.pairs:
-    if name == root:
-      continue   # the root archive is the package's own `tarball url`
-    if not entry.hasKey("resolved"):
-      die("lock entry has no `resolved` url: " & name)
-    result.add(ClosureEntry(path: "node_modules/" & name,
-      url: entry["resolved"].getStr()))
+    seen.incl(key)
+    let entry = packages[key]
+    if entry{"link"}.getBool(false):
+      fail(key & " is a workspace link, not an archive; a runtime closure " &
+        "of a published package cannot contain one")
+    if key != rootAt:
+      if entry{"inBundle"}.getBool(false):
+        # Inside its dependent's archive: not an entry, and not a reason to
+        # need --platform. Its own dependencies are still followed below:
+        # one that is not bundled too must come from the closure. Its path
+        # is still occupied, which the collision check below needs.
+        bundled.add((key, entry))
+      else:
+        if entry.constrained:
+          platformSpecific.add(key)
+        if not entry.hasKey("resolved"):
+          fail("lock entry has no `resolved` url: " & key)
+        members.add((key, entry))
+
+    proc follow(name: string; optional: bool) =
+      let target = resolveDependency(packages, key, name)
+      if target.len == 0:
+        if optional:
+          return
+        fail(key & " depends on " & name & ", which the lock file does " &
+          "not carry anywhere npm would look for it")
+      if target == rootAt:
+        # The root's archive is unpacked at the TOP of the prefix, so
+        # nothing sits at node_modules/<root> for a member that requires the
+        # root by name (a plugin's peer dependency on its host, a cycle).
+        # Dropping the edge would ship a member whose require fails at run
+        # time, so it is refused.
+        fail(key & " requires the root " & rootAt & " by name, but the " &
+          "root sits at the top of the prefix, not at a node_modules " &
+          "position " & key & " would find it at")
+      if packages[target]{"inBundle"}.getBool(false):
+        # A bundled member ships inside its dependent's archive whatever the
+        # platform, so its os/cpu cannot exclude it; checking them would
+        # refuse a manifest the no-platform run accepts.
+        stack.add(target)
+        return
+      if not packages[target].admits(platform):
+        if optional:
+          return
+        fail(key & " requires " & target & ", whose os/cpu constraints " &
+          "exclude " & platform)
+      stack.add(target)
+
+    for name in entry.namesIn("dependencies"):
+      follow(name, optional = false)
+    for name in entry.namesIn("optionalDependencies"):
+      follow(name, optional = true)
+    for name in entry.namesIn("peerDependencies"):
+      if not entry{"peerDependenciesMeta", name, "optional"}.getBool(false):
+        follow(name, optional = false)
+  if platform.len == 0 and platformSpecific.len > 0:
+    platformSpecific.sort()
+    fail("the closure has platform-specific members (" &
+      platformSpecific.join(", ") & "); generate one manifest per platform " &
+      "with --platform=<npm-os>-<npm-cpu>")
+  # The prefix holds the root's archive at its top, so only two layers of
+  # npm's tree survive: the top-level node_modules and the root's own
+  # subtree. A member npm placed in a scope BETWEEN them (the root is
+  # node_modules/a/node_modules/b and a member is node_modules/a/node_modules/x)
+  # has no position the root would find it at, so it is refused.
+  var between: seq[string] = @[]
+  var scope = parentScope(rootAt)
+  while scope.len > 0:
+    between.add(scope)
+    scope = parentScope(scope)
+  proc landsAt(key: string): string =
+    if key.startsWith(rootAt & "/"): key[rootAt.len + 1 .. ^1] else: key
+  # A bundled member occupies its path too: the root's own bundled
+  # node_modules/x is at the same prefix path as a hoisted node_modules/x.
+  # The two may coincide only when they are the same version, so the
+  # hoisted archive unpacks over identical contents; otherwise the root
+  # would run with the hoisted version instead of its bundled one.
+  var bundledAt = initTable[string, (string, string)]()
+  for (key, entry) in bundled:
+    bundledAt[landsAt(key)] = (key, entry{"version"}.getStr(""))
+  var taken = initTable[string, string]()
+  for (key, entry) in members:
+    if not key.startsWith(rootAt & "/"):
+      for s in between:
+        if key.startsWith(s & "/node_modules/"):
+          fail(key & " is nested under " & s & ", between the lock's root " &
+            "and " & rootAt & "; no prefix layout keeps it where " & rootAt &
+            " finds it. Take the closure from a lock rooted nearer the " &
+            "package (npm install <pkg> --package-lock-only)")
+    let path = landsAt(key)
+    if bundledAt.hasKey(path):
+      let (bundledKey, bundledVersion) = bundledAt[path]
+      let version = entry{"version"}.getStr("")
+      if bundledVersion.len == 0 or bundledVersion != version:
+        fail(key & " (" & version & ") lands on " & path & ", where the " &
+          "bundled " & bundledKey & " (" & bundledVersion & ") already is")
+    if taken.hasKey(path):
+      fail("two closure members land on " & path & ": " & taken[path] &
+        " and " & key)
+    taken[path] = key
+    result.add(ClosureEntry(path: path, url: entry["resolved"].getStr()))
   result.sort(proc (a, b: ClosureEntry): int = cmp(a.path, b.path))
+
+proc rootLabel*(packages: JsonNode; root: string): string =
+  ## ``<name>@<version>`` of the root as the lock records it, for the header.
+  let key = rootKey(root)
+  let entry = packages{key}
+  let name = entry{"name"}.getStr(
+    key[key.rfind("node_modules/") + "node_modules/".len .. ^1])
+  let version = entry{"version"}.getStr("")
+  if version.len > 0: name & "@" & version else: name
+
+proc manifestHeader*(rootLabel, lockSource, platform: string;
+                     buildClosure: bool): seq[string] =
+  ## The comment block of a written manifest. It names what the closure is
+  ## of and the lock it was derived from, so a reader can regenerate it.
+  result = @[
+    (if buildClosure: "# Build closure (every archive `npm ci` installs) of " &
+       rootLabel & "."
+     else: "# Runtime dependency closure of " & rootLabel & "."),
+    "#",
+    "# GENERATED by tools/npm_closure_manifest.nim -- do not hand-edit.",
+    "# Every entry is the `resolved` URL npm recorded, at the position its",
+    "# lock file records, in:",
+    "#   " & lockSource,
+    "# with the sha256 of the archive that URL actually serves. npm pins by",
+    "# sha512 `integrity` and reprobuild verifies sha256, so each archive",
+    "# was fetched once and hashed.",
+    "#",
+    "# Format (see TarballProvisioningDef.closureManifest):",
+    "#   <prefix-relative-path> <sha256> <url>"]
+  if platform.len > 0:
+    result.add("#")
+    result.add("# For " & platform & ": entries whose npm os/cpu constraints")
+    result.add("# exclude it are omitted. Every libc variant is kept: the")
+    result.add("# slice serves glibc and musl hosts, and the package's loader")
+    result.add("# picks the build that fits.")
 
 proc installClosure*(packages: JsonNode): seq[ClosureEntry] =
   ## Every archive a full ``npm ci`` would install — the BUILD closure, as
@@ -159,7 +371,7 @@ proc sha256OfUrl(url, scratch: string): string =
   sha256Hex(readFile(target))
 
 when isMainModule:
-  var lockPath, root, outPath, platform = ""
+  var lockPath, root, outPath, platform, lockSource = ""
   var buildClosure = false
   for i in 1 .. paramCount():
     let arg = paramStr(i)
@@ -167,13 +379,20 @@ when isMainModule:
     elif arg.startsWith("--root="): root = arg["--root=".len .. ^1]
     elif arg.startsWith("--out="): outPath = arg["--out=".len .. ^1]
     elif arg.startsWith("--platform="): platform = arg["--platform=".len .. ^1]
+    elif arg.startsWith("--lock-source="):
+      lockSource = arg["--lock-source=".len .. ^1]
     elif arg == "--build-closure": buildClosure = true
     else: die("unknown argument: " & arg)
   # A build closure is the whole `npm ci` install, so it has no single root
   # package to name; a runtime closure is rooted at one package.
-  if lockPath.len == 0 or outPath.len == 0 or
+  # The lock-source is required: the lock a manifest is generated from is
+  # often a scratch file (`npm install <pkg> --package-lock-only` in a
+  # temporary directory), and a header naming it tells a later reader
+  # nothing about how to regenerate the manifest.
+  if lockPath.len == 0 or outPath.len == 0 or lockSource.len == 0 or
       (not buildClosure and root.len == 0):
     die("usage: --lock=<package-lock.json> --out=<manifest> " &
+      "--lock-source=<where the lock came from, for the header> " &
       "(--root=<name> [--platform=<npm-os>-<npm-cpu>] | --build-closure)")
   if buildClosure and (root.len > 0 or platform.len > 0):
     die("--build-closure is the whole install and takes neither --root nor " &
@@ -184,11 +403,21 @@ when isMainModule:
   let lock = parseFile(lockPath)
   if not lock.hasKey("packages"):
     die("not a lockfileVersion 2/3 lock file (no `packages`): " & lockPath)
-  let entries =
-    if buildClosure: installClosure(lock["packages"])
-    else: closureOf(lock["packages"], root, platform)
+  let packages = lock["packages"]
+  var entries: seq[ClosureEntry]
+  try:
+    entries =
+      if buildClosure: installClosure(packages)
+      else: closureOf(packages, root, platform)
+  except ClosureError as e:
+    die(e.msg)
+  let label =
+    if buildClosure:
+      (let n = packages{""}{"name"}.getStr(""); let v = packages{""}{"version"}.getStr("");
+       if n.len == 0: "the lock's root project" elif v.len == 0: n else: n & "@" & v)
+    else: rootLabel(packages, root)
   if entries.len == 0:
-    die("closure of " & root & " is empty; nothing to write")
+    die("the closure of " & label & " is empty; nothing to write")
 
   let scratch = getTempDir() / "npm-closure-manifest"
   createDir(scratch)
@@ -199,25 +428,10 @@ when isMainModule:
     lines.add(entry.path & " " & sha256OfUrl(entry.url, scratch) & " " &
       entry.url)
 
-  var header = @[
-    "# Dependency closure for " & root & ".",
-    "#",
-    "# GENERATED by tools/npm_closure_manifest.nim -- do not hand-edit.",
-    "# Every entry is the `resolved` URL npm recorded in",
-    "#   " & lockPath,
-    "# for the transitive closure of this package's dependencies, with the",
-    "# sha256 of the archive that URL actually serves. npm pins by sha512",
-    "# `integrity` and reprobuild verifies sha256, so each archive was",
-    "# fetched once and hashed.",
-    "#",
-    "# Format (see TarballProvisioningDef.closureManifest):",
-    "#   <prefix-relative-path> <sha256> <url>"]
-  if platform.len > 0:
-    header.add("#")
-    header.add("# Platform-filtered for " & platform & ": optional")
-    header.add("# dependencies are followed and entries whose npm os/cpu")
-    header.add("# constraints exclude this platform are omitted.")
-  createDir(parentDir(outPath))
+  # The header names the lock by what the caller says it is: an upstream
+  # path and commit, or the `npm install ... --package-lock-only` that made it.
+  let header = manifestHeader(label, lockSource, platform, buildClosure)
+  createDir(parentDir(absolutePath(outPath)))
   writeFile(outPath, (header & lines).join("\n") & "\n")
   try: removeDir(scratch) except CatchableError: discard
   stderr.writeLine(&"wrote {entries.len} entries to {outPath}")

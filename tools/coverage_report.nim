@@ -46,6 +46,17 @@ import "../packages/interfaces/gemini-cli/repro" as geminiCliInterface
 import "../packages/interfaces/goose/repro" as gooseInterface
 import "../packages/interfaces/opencode/repro" as opencodeInterface
 import "../packages/interfaces/qwen-code/repro" as qwenCodeInterface
+import "../packages/interfaces/amp/repro" as ampInterface
+import "../packages/interfaces/claude-code-acp/repro" as claudeCodeAcpInterface
+import "../packages/interfaces/grok/repro" as grokInterface
+import "../packages/interfaces/hermes-agent/repro" as hermesAgentInterface
+import "../packages/interfaces/hermes-desktop/repro" as hermesDesktopInterface
+import "../packages/interfaces/kimi-code/repro" as kimiCodeInterface
+import "../packages/interfaces/minimax-code/repro" as minimaxCodeInterface
+import "../packages/interfaces/muse-code/repro" as museCodeInterface
+import "../packages/interfaces/openclaw/repro" as openclawInterface
+import "../packages/interfaces/pi/repro" as piInterface
+import "../packages/interfaces/zcode/repro" as zcodeInterface
 
 import "../packages/vendor/claude-code/repro" as claudeCodeVendor
 import "../packages/vendor/codex/repro" as codexVendor
@@ -53,6 +64,17 @@ import "../packages/vendor/codex-acp/repro" as codexAcpVendor
 import "../packages/vendor/copilot/repro" as copilotVendor
 import "../packages/vendor/goose/repro" as gooseVendor
 import "../packages/vendor/opencode/repro" as opencodeVendor
+import "../packages/vendor/gemini-cli/repro" as geminiCliVendor
+import "../packages/vendor/qwen-code/repro" as qwenCodeVendor
+import "../packages/vendor/amp/repro" as ampVendor
+import "../packages/vendor/claude-code-acp/repro" as claudeCodeAcpVendor
+import "../packages/vendor/grok/repro" as grokVendor
+import "../packages/vendor/hermes-desktop/repro" as hermesDesktopVendor
+import "../packages/vendor/kimi-code/repro" as kimiCodeVendor
+import "../packages/vendor/muse-code/repro" as museCodeVendor
+import "../packages/vendor/openclaw/repro" as openclawVendor
+import "../packages/vendor/pi/repro" as piVendor
+import "../packages/vendor/zcode/repro" as zcodeVendor
 
 const
   InventoryPath* = "inventory" / "upstream.toml"
@@ -70,6 +92,10 @@ type
     packaged*: seq[string]
     packaged_version*: string
     realization_blocked*: string
+    republication*: string
+      ## "denied" when the realization's payload must not be republished
+      ## into a shared cache although the package is source-available: the
+      ## payload is a prebuilt aggregate (see AGENTS.md § Cache policy).
     notes*: string
 
   UncoveredEntry* = object
@@ -98,9 +124,16 @@ proc loadInventory*(text: string): Inventory =
 proc loadInventoryFile*(): Inventory =
   loadInventory(readFile(inventoryPath()))
 
+const RealizationPackageSuffix* = "Realizations"
+  ## A realization module (`packages/vendor/<n>/`, `packages/source/<n>/`)
+  ## declares an empty package of this suffix so `repro catalog publish` can
+  ## extract it on its own: the package carries the module's contributions
+  ## into its artifact. It is not an agent, so it is not coverage.
+
 proc registeredPackageNames*(): HashSet[string] =
   for pkg in registeredPackages():
-    result.incl(pkg.packageName)
+    if not pkg.packageName.endsWith(RealizationPackageSuffix):
+      result.incl(pkg.packageName)
 
 proc hasRealization*(entry: AgentEntry): bool =
   "vendor" in entry.packaged or "source" in entry.packaged

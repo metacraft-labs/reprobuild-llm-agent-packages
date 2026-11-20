@@ -16,9 +16,20 @@ proc addDependencyPath(envName, siblingName: string) =
     let configured = getEnv(envName)
     if configured.len > 0: configured
     else: ".." / siblingName
-  if dirExists(root / "src"):
-    switch("path", root / "src")
+  let sourcePath =
+    if dirExists(root / "src"): root / "src"
+    else: root
+  if dirExists(sourcePath):
+    switch("path", sourcePath)
 
+# reprobuild's DSL imports `clispec/[model, dsl]`, so every recipe needs
+# nim-cli-spec; confutils (`confutils/clispec_config`) is imported by
+# reprobuild's `repro_cli_support`. Same variables and siblings as
+# reprobuild's own config.nims; confutils is rooted at its checkout, with
+# no `src/`.
+addDependencyPath("REPRO_TEST_ADAPTERS_SRC", "reprobuild-test-adapters")
+addDependencyPath("CLI_SPEC_SRC", "nim-cli-spec")
+addDependencyPath("CONFUTILS_SRC", "nim-confutils")
 addDependencyPath("SHM_QUEUE_SRC", "nim-shm-queue")
 addDependencyPath("SHM_GSET_SRC", "nim-shm-gset")
 addDependencyPath("STACKABLE_HOOKS_SRC", "nim-stackable-hooks")

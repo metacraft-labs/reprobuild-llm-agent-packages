@@ -61,3 +61,9 @@ provisioningFor "gemini-cli":
     packageId = "gemini-cli@" & GeminiCliVersion,
     lockIdentity = "vendor-npm:gemini-cli@" & GeminiCliVersion &
       ":sha256:" & GeminiCliSha256
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package geminiCliRealizations:
+  discard

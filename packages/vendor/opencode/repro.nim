@@ -43,3 +43,9 @@ provisioningFor "opencode":
     os = "windows",
     lockIdentity = "vendor-binary:opencode@" & OpencodeVersion &
       ":windows-aarch64:sha256:1b20c559ac53e342046a0080bacb89cb3d40997943ecf18a2bc4d1b0398e33b2"
+
+# Every provider module of a catalog is extracted on its own by
+# `repro catalog publish` and lifted into the artifact of ONE package, named
+# by this block; the realizations above are the contributions it carries.
+package opencodeRealizations:
+  discard
