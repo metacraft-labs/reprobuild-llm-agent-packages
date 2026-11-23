@@ -26,6 +26,10 @@
 ## directly. The other slices were checksummed and listed, not executed.
 ## Bumping the version means re-reading the release; do not carry a digest
 ## forward.
+##
+## Every slice states its ``version``: a consumer that asks for a range
+## (``codex-acp >=0.14``) is refused by a slice without one, since an
+## unversioned record cannot prove it satisfies the range.
 
 import repro_project_dsl
 
@@ -42,6 +46,7 @@ provisioningFor "codex-acp":
     sha256 = "267f577d6d87c403d541420507f7b8f28fa56f6ff432d97eb2eb196c39cf268a",
     archiveType = "zip",
     executablePath = "codex-acp.exe",
+    version = CodexAcpVersion,
     packageId = "codex-acp@" & CodexAcpVersion,
     cpu = "x86_64",
     os = "windows",
@@ -52,6 +57,7 @@ provisioningFor "codex-acp":
     sha256 = "409e9b114fff9451c73a27f620a087ad73649a44396415ef1c3bf217fb23c093",
     archiveType = "zip",
     executablePath = "codex-acp.exe",
+    version = CodexAcpVersion,
     packageId = "codex-acp@" & CodexAcpVersion,
     cpu = "aarch64",
     os = "windows",
@@ -62,6 +68,7 @@ provisioningFor "codex-acp":
     sha256 = "dddc0dc7a6cf0fe98279a2eadfeeedca4e6e482c5fa71d468fd4cf8d89a6f53e",
     archiveType = "tar.gz",
     executablePath = "codex-acp",
+    version = CodexAcpVersion,
     packageId = "codex-acp@" & CodexAcpVersion,
     cpu = "x86_64",
     os = "linux",
@@ -72,6 +79,7 @@ provisioningFor "codex-acp":
     sha256 = "18908961d97993458cb616bb39f8956dbb1bc327932493f0da068a2f23d617c3",
     archiveType = "tar.gz",
     executablePath = "codex-acp",
+    version = CodexAcpVersion,
     packageId = "codex-acp@" & CodexAcpVersion,
     cpu = "aarch64",
     os = "linux",
@@ -82,6 +90,7 @@ provisioningFor "codex-acp":
     sha256 = "57f5c265473fc2b4c29cf574496d0f97c7a2474a2ea353662d0289885e529f36",
     archiveType = "tar.gz",
     executablePath = "codex-acp",
+    version = CodexAcpVersion,
     packageId = "codex-acp@" & CodexAcpVersion,
     cpu = "x86_64",
     os = "macos",
@@ -92,6 +101,7 @@ provisioningFor "codex-acp":
     sha256 = "01009b98cf3cfe83280f6aad060001cfa02694d6a62e6a2c4d17b6c30a3edcb1",
     archiveType = "tar.gz",
     executablePath = "codex-acp",
+    version = CodexAcpVersion,
     packageId = "codex-acp@" & CodexAcpVersion,
     cpu = "aarch64",
     os = "macos",
